@@ -26,7 +26,7 @@ const NB_RETRAITS     = 2
 const fmt = (n: number) =>
   new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n)
 
-export default function PatrimoineDashboard() {
+export default function PatrimoineDashboard({ user }: { user: { name?: string, email?: string } }) {
   const last    = RELEVES[RELEVES.length - 1]
   const first   = RELEVES[0]
   const perfPct = (((last.value - first.value) / first.value) * 100).toFixed(1)
@@ -40,15 +40,15 @@ export default function PatrimoineDashboard() {
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: 'rgba(232,234,240,0.5)' }}>
           <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #1a2a4a, #2a3a6a)', border: '1px solid rgba(200,169,110,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 500, color: '#c8a96e' }}>
-            JD
+            {(user.name || '?').charAt(0).toUpperCase()}
           </div>
-          <span>Jean Dupont</span>
+         <span>{user.name}</span>
         </div>
       </header>
 
       {/* Main */}
       <main style={{ padding: '32px 28px' }}>
-        <p style={{ fontSize: '13px', color: 'rgba(232,234,240,0.4)', letterSpacing: '0.04em', marginBottom: '4px' }}>Bonjour, Jean</p>
+<p style={{ fontSize: '13px', color: 'rgba(232,234,240,0.4)', letterSpacing: '0.04em', marginBottom: '4px' }}>Bonjour, {user.name}</p>
         <h1 style={{ fontSize: '22px', fontWeight: 500, color: '#e8eaf0', marginBottom: '28px' }}>Mon espace investisseur</h1>
 
         {/* KPI patrimoine */}
