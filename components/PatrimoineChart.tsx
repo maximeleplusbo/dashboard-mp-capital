@@ -6,8 +6,8 @@ import { useRef, useEffect } from 'react'
 type Releve = { quarter: string; value: number }
 
 export default function PatrimoineChart({ data }: { data: Releve[] }) {
-  const wrapRef   = useRef<HTMLDivElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const wrapRef    = useRef<HTMLDivElement>(null)
+  const canvasRef  = useRef<HTMLCanvasElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
 
   const POINT_W = 90
@@ -31,7 +31,6 @@ export default function PatrimoineChart({ data }: { data: Releve[] }) {
 
     ctx.clearRect(0, 0, TOTAL_W, H)
 
-    // Grid
     ctx.strokeStyle = 'rgba(255,255,255,0.04)'
     ctx.lineWidth = 0.5
     for (let g = 0; g <= 4; g++) {
@@ -39,7 +38,6 @@ export default function PatrimoineChart({ data }: { data: Releve[] }) {
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(TOTAL_W, y); ctx.stroke()
     }
 
-    // Fill
     const grad = ctx.createLinearGradient(0, PAD_T, 0, H)
     grad.addColorStop(0, 'rgba(200,169,110,0.18)')
     grad.addColorStop(1, 'rgba(200,169,110,0.00)')
@@ -52,7 +50,6 @@ export default function PatrimoineChart({ data }: { data: Releve[] }) {
     ctx.fillStyle = grad
     ctx.fill()
 
-    // Line
     ctx.beginPath()
     ctx.moveTo(toX(0), toY(values[0]))
     for (let i = 1; i < values.length; i++) ctx.lineTo(toX(i), toY(values[i]))
@@ -61,7 +58,6 @@ export default function PatrimoineChart({ data }: { data: Releve[] }) {
     ctx.lineJoin = 'round'
     ctx.stroke()
 
-    // Points
     for (let i = 0; i < values.length; i++) {
       ctx.fillStyle = i === values.length - 1 ? '#c8a96e' : 'rgba(200,169,110,0.4)'
       ctx.beginPath()
@@ -75,7 +71,6 @@ export default function PatrimoineChart({ data }: { data: Releve[] }) {
       }
     }
 
-    // Labels
     ctx.fillStyle = 'rgba(232,234,240,0.35)'
     ctx.font = '10px sans-serif'
     ctx.textAlign = 'center'
@@ -86,7 +81,6 @@ export default function PatrimoineChart({ data }: { data: Releve[] }) {
     const wrap = wrapRef.current
     if (wrap) wrap.scrollLeft = TOTAL_W
 
-    // Drag scroll
     let isDragging = false, startX = 0, startScroll = 0
     const onDown = (e: MouseEvent) => { isDragging = true; startX = e.pageX; startScroll = wrap!.scrollLeft }
     const onUp   = () => { isDragging = false }
@@ -101,9 +95,7 @@ export default function PatrimoineChart({ data }: { data: Releve[] }) {
     }
   }, [])
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const rect = canvasRef.current!.getBoundingClientRect()
-    const mx = e.clientX - rect.left
+  const showTooltip = (mx: number) => {
     let closest = -1, minDist = 999
     for (let i = 0; i < values.length; i++) {
       const dist = Math.abs(toX(i) - mx)
@@ -115,10 +107,12 @@ export default function PatrimoineChart({ data }: { data: Releve[] }) {
       const perf = ((values[closest] - values[0]) / values[0] * 100).toFixed(1)
       const wrapEl = wrapRef.current!
       let tx = toX(closest) - wrapEl.scrollLeft + 10
-      if (tx + 150 > wrapEl.clientWidth) tx = toX(closest) - wrapEl.scrollLeft - 160
+      if (tx + 160 > wrapEl.clientWidth) tx = toX(closest) - wrapEl.scrollLeft - 170
+      const pointY = toY(values[closest])
+      const ttTop = pointY < 70 ? pointY + 15 : pointY - 75
       tt.style.display = 'block'
       tt.style.left = `${tx}px`
-      tt.style.top  = `${toY(values[closest]) - 65}px`
+      tt.style.top  = `${ttTop}px`
       tt.innerHTML  = `
         <div style="font-size:10px;color:rgba(232,234,240,0.4);margin-bottom:2px">${data[closest].quarter}</div>
         <div style="font-size:14px;font-weight:500;color:#c8a96e">${values[closest].toLocaleString('fr-FR')} €</div>
@@ -127,6 +121,17 @@ export default function PatrimoineChart({ data }: { data: Releve[] }) {
     } else {
       tt.style.display = 'none'
     }
+  }
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const rect = canvasRef.current!.getBoundingClientRect()
+    showTooltip(e.clientX - rect.left)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault()
+    const rect = canvasRef.current!.getBoundingClientRect()
+    showTooltip(e.touches[0].clientX - rect.left)
   }
 
   return (
@@ -141,6 +146,8 @@ export default function PatrimoineChart({ data }: { data: Releve[] }) {
         style={{ width: TOTAL_W + 'px', height: H + 'px', display: 'block' }}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => { if (tooltipRef.current) tooltipRef.current.style.display = 'none' }}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={() => { if (tooltipRef.current) tooltipRef.current.style.display = 'none' }}
       />
       <div
         ref={tooltipRef}
