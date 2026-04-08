@@ -66,7 +66,7 @@ export default function PatrimoineDashboard({ user, data }: {
         <img 
   src="https://framerusercontent.com/images/5OUDwHm9zVSVlHsm0LE0jEts.png?width=512&height=117" 
   alt="MP Capital" 
-  style={{ height: '28px', width: 'auto' }} 
+  style={{ height: '32px', width: 'auto', filter: 'brightness(0) invert(1)' }} 
 />
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: 'rgba(232,234,240,0.5)' }}>
           <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #1a2a4a, #2a3a6a)', border: '1px solid rgba(200,169,110,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 500, color: '#c8a96e' }}>
