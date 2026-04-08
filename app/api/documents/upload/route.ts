@@ -26,6 +26,8 @@ export async function POST(request: NextRequest) {
       mimeType: file.type,
       fileData: base64,
       folderId: folderId,
+      clientEmail: session.user.email,
+      clientName: session.user.name,
     }),
   })
 
