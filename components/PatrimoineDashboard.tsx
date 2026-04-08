@@ -5,31 +5,32 @@ import dynamic from 'next/dynamic'
 
 const PatrimoineChart = dynamic(() => import('./PatrimoineChart'), { ssr: false })
 
-const RELEVES = [
-  { quarter: 'T4 2022', value: 100000 },
-  { quarter: 'T1 2023', value: 104500 },
-  { quarter: 'T2 2023', value: 109200 },
-  { quarter: 'T3 2023', value: 108800 },
-  { quarter: 'T4 2023', value: 115600 },
-  { quarter: 'T1 2024', value: 121000 },
-  { quarter: 'T2 2024', value: 128400 },
-  { quarter: 'T3 2024', value: 133200 },
-  { quarter: 'T4 2024', value: 141800 },
-  { quarter: 'T1 2025', value: 147320 },
-]
 
-const MONTANT_INVESTI = 124500
-const MONTANT_RETIRE  = 8000
-const NB_VERSEMENTS   = 5
-const NB_RETRAITS     = 2
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n)
 
-export default function PatrimoineDashboard({ user }: { user: { name?: string, email?: string } }) {
-  const last    = RELEVES[RELEVES.length - 1]
-  const first   = RELEVES[0]
-  const perfPct = (((last.value - first.value) / first.value) * 100).toFixed(1)
+type ClientData = {
+  releves: { quarter: string; value: number }[]
+  montantInvesti: number
+  montantRetire: number
+  nbVersements: number
+  nbRetraits: number
+} | null
+
+export default function PatrimoineDashboard({ user, data }: { 
+  user: { name?: string, email?: string },
+  data: ClientData 
+}) {
+  const RELEVES = data?.releves || []
+  const MONTANT_INVESTI = data?.montantInvesti || 0
+  const MONTANT_RETIRE = data?.montantRetire || 0
+  const NB_VERSEMENTS = data?.nbVersements || 0
+  const NB_RETRAITS = data?.nbRetraits || 0
+
+  const last = RELEVES[RELEVES.length - 1]
+  const first = RELEVES[0]
+  const perfPct = last && first ? (((last.value - first.value) / first.value) * 100).toFixed(1) : '0'
 
   return (
     <div style={{ minHeight: '100vh', background: '#0d0f14', color: '#e8eaf0', fontFamily: 'system-ui, sans-serif' }}>
