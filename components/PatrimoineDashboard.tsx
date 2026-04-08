@@ -1,6 +1,8 @@
 // components/PatrimoineDashboard.tsx
 'use client'
 
+import Link from 'next/link'
+
 import dynamic from 'next/dynamic'
 
 const PatrimoineChart = dynamic(() => import('./PatrimoineChart'), { ssr: false })
@@ -100,6 +102,11 @@ export default function PatrimoineDashboard({ user, data }: {
         <p style={{ textAlign: 'center', fontSize: '11px', color: 'rgba(232,234,240,0.2)', marginTop: '24px', letterSpacing: '0.04em' }}>
           Données mises à jour chaque trimestre par MP Capital
         </p>
+        
+          <Link href="/dashboard/documents" style={{ display: 'block', textAlign: 'center', marginTop: '16px', fontSize: '13px', color: '#c8a96e', textDecoration: 'none' }}>
+          Mes documents →
+        </Link>
+        
       </main>
     </div>
   )
