@@ -141,12 +141,9 @@ export default function PatrimoineDashboard({ user, data }: {
         <p style={{ textAlign: 'center', fontSize: '11px', color: 'rgba(232,234,240,0.2)', marginTop: '24px', letterSpacing: '0.04em' }}>
           Donnees mises a jour chaque trimestre par MP Capital
         </p>
-
-        <Link href="/dashboard/documents" style={{ display: 'block', textAlign: 'center', marginTop: '16px', fontSize: '13px', color: '#c8a96e', textDecoration: 'none' }}>
         <Link href="/dashboard/documents" style={{ display: 'block', textAlign: 'center', marginTop: '16px', fontSize: '13px', color: '#c8a96e', textDecoration: 'none' }}>
           Mes documents →
         </Link>
-
       </main>
     </div>
   )
