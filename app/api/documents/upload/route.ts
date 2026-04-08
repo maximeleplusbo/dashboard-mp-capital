@@ -1,6 +1,6 @@
 // app/api/documents/upload/route.ts
 import { auth0 } from '@/lib/auth0'
-import { uploadFileToDrive } from '@/lib/drive'
+import { getOrCreateClientFolder } from '@/lib/drive'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
@@ -11,13 +11,29 @@ export async function POST(request: NextRequest) {
   const file = formData.get('file') as File
   if (!file) return NextResponse.json({ error: 'Aucun fichier' }, { status: 400 })
 
-  const buffer = Buffer.from(await file.arrayBuffer())
-  const result = await uploadFileToDrive(
-    session.user.email!,
-    file.name,
-    file.type,
-    buffer
-  )
+  const folderId = await getOrCreateClientFolder(session.user.email!)
 
-  return NextResponse.json({ success: true, file: result })
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const base64 = buffer.toString('base64')
+
+  console.log('Sending to n8n, folderId:', folderId)
+
+  const res = await fetch('https://automations.mailcaptain.io/webhook/mp-capital-upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      fileName: file.name,
+      mimeType: file.type,
+      fileData: base64,
+      folderId: folderId,
+    }),
+  })
+
+  console.log('n8n status:', res.status)
+  const responseText = await res.text()
+  console.log('n8n response:', responseText)
+
+  if (!res.ok) return NextResponse.json({ error: 'Upload echoue' }, { status: 500 })
+
+  return NextResponse.json({ success: true })
 }

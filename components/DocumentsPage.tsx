@@ -24,7 +24,10 @@ export default function DocumentsPage({ user }: { user: { name?: string, email?:
     try {
       const res = await fetch('/api/documents')
       const data = await res.json()
-      setFiles(data.files || [])
+      const files = data.files || []
+      setFiles(files)
+      const seenIds = files.map((f: DriveFile) => f.id)
+      localStorage.setItem('seen_docs', JSON.stringify(seenIds))
     } catch {
       setError('Erreur lors du chargement des documents')
     } finally {
