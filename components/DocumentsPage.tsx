@@ -82,9 +82,11 @@ export default function DocumentsPage({ user }: { user: { name?: string, email?:
   return (
     <div style={{ minHeight: '100vh', background: '#0d0f14', color: '#e8eaf0', fontFamily: 'system-ui, sans-serif' }}>
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 28px', borderBottom: '0.5px solid rgba(255,255,255,0.08)' }}>
-        <span style={{ fontSize: '15px', fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#c8a96e' }}>
-          MP Capital
-        </span>
+        <img 
+  src="https://framerusercontent.com/images/5OUDwHm9zVSVlHsm0LE0jEts.png?width=512&height=117" 
+  alt="MP Capital" 
+  style={{ height: '28px', width: 'auto' }} 
+/>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: 'rgba(232,234,240,0.5)' }}>
           <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#1a2a4a', border: '1px solid rgba(200,169,110,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 500, color: '#c8a96e' }}>
             {(user.name || '?').charAt(0).toUpperCase()}
