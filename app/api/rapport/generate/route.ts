@@ -98,7 +98,7 @@ DATEDUJOUR: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'lon
   for (const [k, v] of Object.entries(uploadForm.parameters as Record<string, string>)) {
     formData.append(k, v)
   }
-  formData.append('file', new Blob([outputBuffer.buffer]), 'rapport.docx')
+  formData.append('file', new Blob([new Uint8Array(outputBuffer)]), 'rapport.docx')
 
   await fetch(uploadForm.url, { method: 'POST', body: formData })
 
