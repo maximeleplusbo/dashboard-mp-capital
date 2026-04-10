@@ -54,7 +54,7 @@ export async function GET() {
   }
 
   zip.file('word/document.xml', xml)
-  const outputBuffer = await zip.generateAsync({ type: 'nodebuffer' })
+  const outputBuffer = await zip.generateAsync({ type: 'uint8array' })
 
   return new NextResponse(outputBuffer, {
     headers: {
