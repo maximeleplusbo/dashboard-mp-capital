@@ -91,17 +91,29 @@ export default function PatrimoineDashboard({ user, data }: {
       {/* Main */}
       <main style={{ padding: '32px 28px' }}>
 
-     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginBottom: '24px' }}>
-          
-          <a
-            href="/api/rapport/generate"
-            download
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(200,169,110,0.08)', border: '0.5px solid rgba(200,169,110,0.3)', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 500, color: '#c8a96e', textDecoration: 'none', letterSpacing: '0.02em' }}>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M7 2v7M4 6l3 3 3-3M2 11h10" stroke="#c8a96e" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Rapport trimestriel
-          </a>
+    <button
+  onClick={async () => {
+    try {
+      const res = await fetch('/api/rapport/generate')
+      if (!res.ok) throw new Error('Erreur')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'rapport-trimestriel.pdf'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      alert('Erreur lors de la génération du rapport')
+    }
+  }}
+  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(200,169,110,0.08)', border: '0.5px solid rgba(200,169,110,0.3)', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 500, color: '#c8a96e', cursor: 'pointer', letterSpacing: '0.02em' }}>
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+    <path d="M7 2v7M4 6l3 3 3-3M2 11h10" stroke="#c8a96e" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+  Rapport trimestriel
+</button>
+
           <Link href="/dashboard/documents" style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(200,169,110,0.08)', border: '0.5px solid rgba(200,169,110,0.3)', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 500, color: '#c8a96e', textDecoration: 'none', letterSpacing: '0.02em' }}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M2 3.5h10M2 7h10M2 10.5h6" stroke="#c8a96e" strokeWidth="1.3" strokeLinecap="round"/>
