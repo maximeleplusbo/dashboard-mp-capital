@@ -35,13 +35,14 @@ export async function GET() {
     VALEUR_OUVERTURE_DEBUT: fmt(premierReleve?.value || 0),
     GAIN_DEBUT_EUR: (data.gainReel >= 0 ? '+ ' : '- ') + fmt(Math.abs(data.gainReel)),
     GAIN_DEBUT_PCT: (data.gainPct >= 0 ? '+ ' : '- ') + Math.abs(data.gainPct).toFixed(2) + ' %',
+DATEDUJOUR: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
   }
 
   const templateUrl = process.env.RAPPORT_TEMPLATE_URL!
   const templateRes = await fetch(templateUrl)
   const templateBuffer = await templateRes.arrayBuffer()
 
-const JSZip = (await import('jszip')).default
+  const JSZip = (await import('jszip')).default
   const zip = await JSZip.loadAsync(templateBuffer)
 
   const filesToProcess = Object.keys(zip.files).filter(name =>
@@ -57,11 +58,8 @@ const JSZip = (await import('jszip')).default
     }
     zip.file(fileName, xml)
   }
- 
- const outputBuffer = await zip.generateAsync({ type: 'uint8array' })
 
-  const FormData = (await import('form-data')).default
-  const form = new FormData()
+  const outputBuffer = await zip.generateAsync({ type: 'nodebuffer' })
 
   const jobRes = await fetch('https://api.cloudconvert.com/v2/jobs', {
     method: 'POST',
@@ -87,38 +85,42 @@ const JSZip = (await import('jszip')).default
   })
 
   const job = await jobRes.json()
-  const uploadTask = job.data.tasks.find((t: {name: string}) => t.name === 'upload-file')
+  console.log('CC job:', JSON.stringify(job).substring(0, 500))
 
-  await fetch(uploadTask.result.form.url, {
-    method: 'POST',
-    body: (() => {
-      const f = new (require('form-data'))()
-      Object.entries(uploadTask.result.form.parameters).forEach(([k, v]) => f.append(k, v))
-      f.append('file', Buffer.from(outputBuffer), 'rapport.docx')
-      return f
-    })(),
-    headers: ((() => {
-      const f = new (require('form-data'))()
-      return f.getHeaders()
-    })())
-  })
+  if (!job.data || !job.data.tasks) {
+    return NextResponse.json({ error: 'CloudConvert error', details: job }, { status: 500 })
+  }
+
+  const uploadTask = job.data.tasks.find((t: { name: string }) => t.name === 'upload-file')
+  const uploadForm = uploadTask.result.form
+
+  const formData = new FormData()
+  for (const [k, v] of Object.entries(uploadForm.parameters as Record<string, string>)) {
+    formData.append(k, v)
+  }
+  formData.append('file', new Blob([outputBuffer]), 'rapport.docx')
+
+  await fetch(uploadForm.url, { method: 'POST', body: formData })
 
   let pdfUrl = ''
   for (let i = 0; i < 30; i++) {
-    await new Promise(r => setTimeout(r, 1000))
+    await new Promise(r => setTimeout(r, 2000))
     const statusRes = await fetch('https://api.cloudconvert.com/v2/jobs/' + job.data.id, {
       headers: { 'Authorization': 'Bearer ' + process.env.CLOUDCONVERT_API_KEY }
     })
     const status = await statusRes.json()
-    const exportTask = status.data.tasks.find((t: {name: string}) => t.name === 'export-file')
+    const exportTask = status.data.tasks.find((t: { name: string }) => t.name === 'export-file')
     if (exportTask?.status === 'finished') {
       pdfUrl = exportTask.result.files[0].url
       break
     }
-    if (status.data.status === 'error') break
+    if (status.data.status === 'error') {
+      console.log('CC error:', JSON.stringify(status).substring(0, 500))
+      break
+    }
   }
 
-  if (!pdfUrl) return NextResponse.json({ error: 'Conversion échouée' }, { status: 500 })
+  if (!pdfUrl) return NextResponse.json({ error: 'Conversion echouee' }, { status: 500 })
 
   const pdfRes = await fetch(pdfUrl)
   const pdfBuffer = await pdfRes.arrayBuffer()

@@ -68,13 +68,16 @@ export default function PatrimoineDashboard({ user, data }: {
   const last = RELEVES[RELEVES.length - 1]
   const first = RELEVES[0]
   
+  const [rapportLoading, setRapportLoading] = useState(false)
+  
   const gainEur = data?.gainReel || 0
   const gainPct = data?.gainPct || 0
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0d0f14', color: '#e8eaf0', fontFamily: 'system-ui, sans-serif' }}>
-      {/* Topbar */}
-      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 28px', borderBottom: '0.5px solid rgba(255,255,255,0.08)' }}>
+  <div style={{ minHeight: '100vh', background: '#0d0f14', color: '#e8eaf0', fontFamily: 'system-ui, sans-serif' }}>
+    <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+    {/* Topbar */}
+    <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 28px', borderBottom: '0.5px solid rgba(255,255,255,0.08)' }}>
         <img 
   src="https://framerusercontent.com/images/5OUDwHm9zVSVlHsm0LE0jEts.png?width=512&height=117" 
   alt="MP Capital" 
@@ -91,8 +94,9 @@ export default function PatrimoineDashboard({ user, data }: {
       {/* Main */}
       <main style={{ padding: '32px 28px' }}>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginBottom: '24px' }}>
-          <button
+      <button
   onClick={async () => {
+    setRapportLoading(true)
     try {
       const res = await fetch('/api/rapport/generate')
       if (!res.ok) throw new Error('Erreur')
@@ -105,13 +109,27 @@ export default function PatrimoineDashboard({ user, data }: {
       URL.revokeObjectURL(url)
     } catch {
       alert('Erreur lors de la génération du rapport')
+    } finally {
+      setRapportLoading(false)
     }
   }}
-  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(200,169,110,0.08)', border: '0.5px solid rgba(200,169,110,0.3)', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 500, color: '#c8a96e', cursor: 'pointer', letterSpacing: '0.02em' }}>
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-    <path d="M7 2v7M4 6l3 3 3-3M2 11h10" stroke="#c8a96e" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-  Rapport trimestriel
+  disabled={rapportLoading}
+  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(200,169,110,0.08)', border: '0.5px solid rgba(200,169,110,0.3)', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 500, color: '#c8a96e', cursor: rapportLoading ? 'not-allowed' : 'pointer', opacity: rapportLoading ? 0.6 : 1, letterSpacing: '0.02em' }}>
+  {rapportLoading ? (
+    <>
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ animation: 'spin 1s linear infinite' }}>
+        <circle cx="7" cy="7" r="5" stroke="#c8a96e" strokeWidth="1.5" strokeDasharray="20" strokeDashoffset="10"/>
+      </svg>
+      Génération...
+    </>
+  ) : (
+    <>
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M7 2v7M4 6l3 3 3-3M2 11h10" stroke="#c8a96e" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+      Rapport trimestriel
+    </>
+  )}
 </button>
 
           <Link href="/dashboard/documents" style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(200,169,110,0.08)', border: '0.5px solid rgba(200,169,110,0.3)', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 500, color: '#c8a96e', textDecoration: 'none', letterSpacing: '0.02em' }}>
