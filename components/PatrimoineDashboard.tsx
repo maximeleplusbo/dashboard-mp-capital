@@ -57,10 +57,9 @@ export default function PatrimoineDashboard({ user, data }: {
 
   const last = RELEVES[RELEVES.length - 1]
   const first = RELEVES[0]
-  const perfPct = last && first ? (((last.value - first.value) / first.value) * 100).toFixed(1) : '0'
   
-  const gainEur = last && first ? last.value - first.value : 0
-  const gainPct = last && first ? ((last.value - first.value) / first.value) * 100 : 0
+  const gainEur = data?.gainReel || 0
+  const gainPct = data?.gainPct || 0
 
   return (
     <div style={{ minHeight: '100vh', background: '#0d0f14', color: '#e8eaf0', fontFamily: 'system-ui, sans-serif' }}>
@@ -82,8 +81,16 @@ export default function PatrimoineDashboard({ user, data }: {
       {/* Main */}
       <main style={{ padding: '32px 28px' }}>
 
-        {/* Bouton documents */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginBottom: '24px' }}>
+          
+            href="/api/rapport/generate"
+            download
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(200,169,110,0.08)', border: '0.5px solid rgba(200,169,110,0.3)', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 500, color: '#c8a96e', textDecoration: 'none', letterSpacing: '0.02em' }}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M7 2v7M4 6l3 3 3-3M2 11h10" stroke="#c8a96e" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Rapport trimestriel
+          </a>
           <Link href="/dashboard/documents" style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(200,169,110,0.08)', border: '0.5px solid rgba(200,169,110,0.3)', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 500, color: '#c8a96e', textDecoration: 'none', letterSpacing: '0.02em' }}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M2 3.5h10M2 7h10M2 10.5h6" stroke="#c8a96e" strokeWidth="1.3" strokeLinecap="round"/>
