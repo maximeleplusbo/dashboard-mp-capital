@@ -16,6 +16,16 @@ type ClientData = {
   montantRetire: number
   nbVersements: number
   nbRetraits: number
+  adresseClient: string
+  numRefClient: string
+  gainReel: number
+  gainPct: number
+  gainTrimestre: number
+  gainTrimestrePct: number
+  dernierTrimestre: string
+  avantDernierTrimestre: string
+  premiereValeur: number
+  derniereValeur: number
 } | null
 
 function NewDocsIndicator() {
