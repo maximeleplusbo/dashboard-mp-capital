@@ -58,6 +58,9 @@ export default function PatrimoineDashboard({ user, data }: {
   const last = RELEVES[RELEVES.length - 1]
   const first = RELEVES[0]
   const perfPct = last && first ? (((last.value - first.value) / first.value) * 100).toFixed(1) : '0'
+  
+  const gainEur = last && first ? last.value - first.value : 0
+  const gainPct = last && first ? ((last.value - first.value) / first.value) * 100 : 0
 
   return (
     <div style={{ minHeight: '100vh', background: '#0d0f14', color: '#e8eaf0', fontFamily: 'system-ui, sans-serif' }}>
@@ -98,10 +101,27 @@ export default function PatrimoineDashboard({ user, data }: {
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: 'linear-gradient(90deg, #c8a96e, #e8c98e)' }} />
           <p style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(232,234,240,0.4)', marginBottom: '10px' }}>Valeur du patrimoine</p>
           <p style={{ fontSize: '28px', fontWeight: 500, color: '#c8a96e', letterSpacing: '-0.02em', marginBottom: '8px' }}>{last ? fmt(last.value) : '—'}</p>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', padding: '3px 10px', borderRadius: '20px', background: 'rgba(34,197,94,0.12)', color: '#4ade80', border: '0.5px solid rgba(34,197,94,0.2)' }}>
-            ▲ +{perfPct}% depuis le début
-          </span>
-          <p style={{ fontSize: '12px', color: 'rgba(232,234,240,0.3)', marginTop: '8px' }}>Dernier relevé : {last?.quarter}</p>
+          <p style={{ fontSize: '12px', color: 'rgba(232,234,240,0.3)', marginTop: '4px' }}>Dernier relevé : {last?.quarter}</p>
+        </div>
+
+        {/* Gains / Pertes */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+          <div style={{ position: 'relative', background: '#141720', border: '0.5px solid rgba(255,255,255,0.07)', borderRadius: '14px', padding: '20px 22px', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: gainEur >= 0 ? '#4ade80' : '#f87171' }} />
+            <p style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(232,234,240,0.4)', marginBottom: '10px' }}>Gains / Pertes</p>
+            <p style={{ fontSize: '24px', fontWeight: 500, color: gainEur >= 0 ? '#4ade80' : '#f87171', letterSpacing: '-0.02em', marginBottom: '8px' }}>
+              {gainEur >= 0 ? '+' : ''}{fmt(gainEur)}
+            </p>
+            <p style={{ fontSize: '12px', color: 'rgba(232,234,240,0.3)', marginTop: '4px' }}>Dernier relevé : {last?.quarter}</p>
+          </div>
+          <div style={{ position: 'relative', background: '#141720', border: '0.5px solid rgba(255,255,255,0.07)', borderRadius: '14px', padding: '20px 22px', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: gainPct >= 0 ? '#4ade80' : '#f87171' }} />
+            <p style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(232,234,240,0.4)', marginBottom: '10px' }}>Performance</p>
+            <p style={{ fontSize: '24px', fontWeight: 500, color: gainPct >= 0 ? '#4ade80' : '#f87171', letterSpacing: '-0.02em', marginBottom: '8px' }}>
+              {gainPct >= 0 ? '+' : ''}{gainPct.toFixed(1)}%
+            </p>
+            <p style={{ fontSize: '12px', color: 'rgba(232,234,240,0.3)', marginTop: '4px' }}>Dernier relevé : {last?.quarter}</p>
+          </div>
         </div>
 
         {/* Graphique */}
