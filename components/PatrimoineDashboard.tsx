@@ -90,8 +90,8 @@ export default function PatrimoineDashboard({ user, data }: {
 
       {/* Main */}
       <main style={{ padding: '32px 28px' }}>
-
-    <button
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginBottom: '24px' }}>
+          <button
   onClick={async () => {
     try {
       const res = await fetch('/api/rapport/generate')
