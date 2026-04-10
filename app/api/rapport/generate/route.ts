@@ -54,9 +54,10 @@ export async function GET() {
   }
 
   zip.file('word/document.xml', xml)
-  const outputBuffer = await zip.generateAsync({ type: 'uint8array' })
+ 
+ const outputBuffer = await zip.generateAsync({ type: 'uint8array' })
 
-  return new NextResponse(outputBuffer, {
+  return new NextResponse(outputBuffer.buffer as ArrayBuffer, {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'Content-Disposition': 'attachment; filename="rapport-' + data.dernierTrimestre.replace(' ', '-') + '.docx"',
