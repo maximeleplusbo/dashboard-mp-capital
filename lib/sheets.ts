@@ -51,6 +51,8 @@ export async function getClientData(email: string) {
   const gainTrimestrePct = avantDernierReleve > 0 ? (gainTrimestre / avantDernierReleve) * 100 : 0
   const dernierTrimestre = releves[releves.length - 1]?.quarter || ''
   const avantDernierTrimestre = releves[releves.length - 2]?.quarter || ''
+  
+  const capitalNet = montantInvesti - montantRetire
 
   return {
     releves,
@@ -68,5 +70,6 @@ export async function getClientData(email: string) {
     avantDernierTrimestre,
     premiereValeur,
     derniereValeur,
+    capitalNet,
   }
 }
