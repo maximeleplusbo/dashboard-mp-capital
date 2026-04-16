@@ -3,52 +3,59 @@ import { auth0 } from '@/lib/auth0'
 import { getClientData } from '@/lib/sheets'
 import { NextResponse } from 'next/server'
 
-function generateTableauXml(
-  releves: { quarter: string; value: number }[],
-  fmt: (n: number) => string
-): string {
-  const cellWidth = '2200'
-  const rows: string[] = []
+function generateTableauXml(releves: { quarter: string; value: number }[], fmt: (n: number) => string): string {
+  const GOLD = 'C8A96E'
+  const BLACK = '000000'
+  const WHITE = 'FFFFFF'
+  const LIGHT = 'F5F5F5'
 
-  // Header row
-  rows.push(
-    `<w:tr>` +
-      `<w:tc><w:tcPr><w:tcW w:w="${cellWidth}" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="1F3864"/></w:tcPr><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="18"/></w:rPr><w:t>Trimestre</w:t></w:r></w:p></w:tc>` +
-      `<w:tc><w:tcPr><w:tcW w:w="${cellWidth}" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="1F3864"/></w:tcPr><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="18"/></w:rPr><w:t>Valeur (</w:t></w:r><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="18"/></w:rPr><w:t>€)</w:t></w:r></w:p></w:tc>` +
-      `<w:tc><w:tcPr><w:tcW w:w="${cellWidth}" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="1F3864"/></w:tcPr><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="18"/></w:rPr><w:t>Variation (</w:t></w:r><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="18"/></w:rPr><w:t>€)</w:t></w:r></w:p></w:tc>` +
-      `<w:tc><w:tcPr><w:tcW w:w="${cellWidth}" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="1F3864"/></w:tcPr><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="18"/></w:rPr><w:t>Variation (%)</w:t></w:r></w:p></w:tc>` +
-    `</w:tr>`
-  )
-
-  // Data rows
-  for (let i = 0; i < releves.length; i++) {
-    const r = releves[i]
-    const prev = i > 0 ? releves[i - 1].value : r.value
-    const variationEur = r.value - prev
-    const variationPct = prev > 0 ? ((variationEur / prev) * 100) : 0
-    const fillColor = i % 2 === 0 ? 'F2F2F2' : 'FFFFFF'
-    const sign = (n: number) => (n >= 0 ? '+ ' : '- ')
-
-    rows.push(
-      `<w:tr>` +
-        `<w:tc><w:tcPr><w:tcW w:w="${cellWidth}" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="${fillColor}"/></w:tcPr><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/></w:rPr><w:t>${r.quarter}</w:t></w:r></w:p></w:tc>` +
-        `<w:tc><w:tcPr><w:tcW w:w="${cellWidth}" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="${fillColor}"/></w:tcPr><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/></w:rPr><w:t>${fmt(r.value)} €</w:t></w:r></w:p></w:tc>` +
-        `<w:tc><w:tcPr><w:tcW w:w="${cellWidth}" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="${fillColor}"/></w:tcPr><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/></w:rPr><w:t>${i === 0 ? '-' : sign(variationEur) + fmt(Math.abs(variationEur)) + ' €'}</w:t></w:r></w:p></w:tc>` +
-        `<w:tc><w:tcPr><w:tcW w:w="${cellWidth}" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="${fillColor}"/></w:tcPr><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/></w:rPr><w:t>${i === 0 ? '-' : sign(variationPct) + Math.abs(variationPct).toFixed(2) + ' %'}</w:t></w:r></w:p></w:tc>` +
-      `</w:tr>`
-    )
+  const nb = Math.min(4, releves.length - 1)
+  const lignes = []
+  for (let i = releves.length - nb; i < releves.length; i++) {
+    const ouverture = releves[i - 1].value
+    const cloture = releves[i].value
+    const gain = cloture - ouverture
+    const perf = ouverture > 0 ? (gain / ouverture) * 100 : 0
+    const gainStr = (gain >= 0 ? '+ ' : '- ') + fmt(Math.abs(gain)) + ' \u20ac'
+    const perfStr = (perf >= 0 ? '+ ' : '- ') + Math.abs(perf).toFixed(2) + ' %'
+    const bg = i % 2 === 0 ? LIGHT : WHITE
+    const gainColor = gain >= 0 ? '16A34A' : 'DC2626'
+    lignes.push({ quarter: releves[i].quarter, ouverture, cloture, gainStr, perfStr, bg, gainColor })
   }
 
-  return `<w:tbl><w:tblPr><w:tblStyle w:val="TableGrid"/><w:tblW w:w="0" w:type="auto"/><w:tblBorders>` +
-    `<w:top w:val="single" w:sz="4" w:space="0" w:color="BFBFBF"/>` +
-    `<w:left w:val="single" w:sz="4" w:space="0" w:color="BFBFBF"/>` +
-    `<w:bottom w:val="single" w:sz="4" w:space="0" w:color="BFBFBF"/>` +
-    `<w:right w:val="single" w:sz="4" w:space="0" w:color="BFBFBF"/>` +
-    `<w:insideH w:val="single" w:sz="4" w:space="0" w:color="BFBFBF"/>` +
-    `<w:insideV w:val="single" w:sz="4" w:space="0" w:color="BFBFBF"/>` +
-    `</w:tblBorders></w:tblPr>` +
-    rows.join('') +
-    `</w:tbl>`
+  const cell = (text: string, bg: string, bold = false, color = BLACK, w = '1800') =>
+    '<w:tc><w:tcPr><w:tcW w:w="' + w + '" w:type="dxa"/>' +
+    '<w:shd w:val="clear" w:color="auto" w:fill="' + bg + '"/>' +
+    '<w:tcMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar>' +
+    '</w:tcPr><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr>' +
+    (bold ? '<w:b/>' : '') +
+    '<w:color w:val="' + color + '"/><w:sz w:val="18"/><w:szCs w:val="18"/>' +
+    '</w:rPr><w:t>' + text + '</w:t></w:r></w:p></w:tc>'
+
+  const headers = ['P\u00e9riode', 'Valeur d\'ouverture', 'Valeur de cl\u00f4ture', 'Gain / Perte (\u20ac)', 'Performance (%)']
+  const headerRow = '<w:tr>' + headers.map(h => cell(h, BLACK, true, GOLD)).join('') + '</w:tr>'
+
+  const dataRows = lignes.map(l =>
+    '<w:tr>' +
+    cell(l.quarter, l.bg, false, BLACK) +
+    cell(fmt(l.ouverture) + ' \u20ac', l.bg, false, BLACK) +
+    cell(fmt(l.cloture) + ' \u20ac', l.bg, false, BLACK) +
+    cell(l.gainStr, l.bg, true, l.gainColor) +
+    cell(l.perfStr, l.bg, true, l.gainColor) +
+    '</w:tr>'
+  ).join('')
+
+  return '<w:tbl>' +
+    '<w:tblPr><w:tblW w:w="9000" w:type="dxa"/>' +
+    '<w:tblBorders>' +
+    '<w:top w:val="single" w:sz="4" w:space="0" w:color="' + GOLD + '"/>' +
+    '<w:bottom w:val="single" w:sz="4" w:space="0" w:color="' + GOLD + '"/>' +
+    '<w:insideH w:val="single" w:sz="2" w:space="0" w:color="DDDDDD"/>' +
+    '</w:tblBorders></w:tblPr>' +
+    '<w:tblGrid>' +
+    '<w:gridCol w:w="1800"/><w:gridCol w:w="1800"/><w:gridCol w:w="1800"/><w:gridCol w:w="1800"/><w:gridCol w:w="1800"/>' +
+    '</w:tblGrid>' +
+    headerRow + dataRows + '</w:tbl>'
 }
 
 export async function GET() {
@@ -97,8 +104,6 @@ DATEDUJOUR: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'lon
     name.startsWith('word/') && name.endsWith('.xml')
   )
 
-  const tableauXml = generateTableauXml(data.releves, fmt)
-
   for (const fileName of filesToProcess) {
     const xmlFile = zip.file(fileName)
     if (!xmlFile) continue
@@ -106,13 +111,12 @@ DATEDUJOUR: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'lon
     for (const [key, value] of Object.entries(replacements)) {
       xml = xml.split('{{' + key + '}}').join(value)
     }
-    // Replace {{TABLEAU_PERFORMANCE}} — the placeholder may be wrapped in a <w:p> paragraph,
-    // so we replace the entire enclosing paragraph to insert a valid <w:tbl> block.
-    const tableauRegex = /<w:p\b[^>]*>(?:<w:pPr>[\s\S]*?<\/w:pPr>)?[\s\S]*?\{\{TABLEAU_PERFORMANCE\}\}[\s\S]*?<\/w:p>/g
-    if (tableauRegex.test(xml)) {
-      xml = xml.replace(tableauRegex, tableauXml)
-    } else {
-      xml = xml.split('{{TABLEAU_PERFORMANCE}}').join(tableauXml)
+    if (xml.includes('{{TABLEAU_PERFORMANCE}}')) {
+      const tableXml = generateTableauXml(data.releves, fmt)
+      xml = xml.replace(/<w:p\b[^>]*>(?:(?!<\/w:p>)[\s\S])*\{\{TABLEAU_PERFORMANCE\}\}(?:(?!<\/w:p>)[\s\S])*<\/w:p>/, tableXml)
+      if (xml.includes('{{TABLEAU_PERFORMANCE}}')) {
+        xml = xml.split('{{TABLEAU_PERFORMANCE}}').join(tableXml)
+      }
     }
     zip.file(fileName, xml)
   }
