@@ -28,6 +28,53 @@ type ClientData = {
   derniereValeur: number
 } | null
 
+function HistoriquePerformances({ releves }: { releves: { quarter: string; value: number }[] }) {
+  console.log('HistoriquePerformances rendered, releves:', releves.length)
+  const [visibleCount, setVisibleCount] = useState(20)
+
+  const performances = releves.map((r, i) => {
+    if (i === 0) return { quarter: r.quarter, pct: null }
+    const prev = releves[i - 1].value
+    const pct = prev > 0 ? ((r.value - prev) / prev) * 100 : 0
+    return { quarter: r.quarter, pct }
+  }).reverse()
+
+  const visible = performances.slice(0, visibleCount)
+  const hasMore = visibleCount < performances.length
+
+  return (
+    <div style={{ background: '#141720', border: '0.5px solid rgba(255,255,255,0.07)', borderRadius: '14px', padding: '22px', marginBottom: '16px' }}>
+      <p style={{ fontSize: '14px', fontWeight: 500, color: '#e8eaf0', marginBottom: '16px' }}>Historique des performances</p>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr>
+            <th style={{ textAlign: 'left', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgba(232,234,240,0.4)', padding: '0 0 10px 0' }}>Trimestre</th>
+            <th style={{ textAlign: 'right', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgba(232,234,240,0.4)', padding: '0 0 10px 0' }}>Performance</th>
+          </tr>
+        </thead>
+        <tbody>
+          {visible.map((row) => (
+            <tr key={row.quarter} style={{ borderTop: '0.5px solid rgba(255,255,255,0.07)' }}>
+              <td style={{ padding: '10px 0', fontSize: '13px', color: '#e8eaf0' }}>{row.quarter}</td>
+              <td style={{ padding: '10px 0', fontSize: '13px', fontWeight: 500, textAlign: 'right', color: row.pct === null ? 'rgba(232,234,240,0.3)' : row.pct >= 0 ? '#4ade80' : '#f87171' }}>
+                {row.pct === null ? '—' : `${row.pct >= 0 ? '+' : ''}${row.pct.toFixed(2)} %`}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {hasMore && (
+        <button
+          onClick={() => setVisibleCount((c) => c + 20)}
+          style={{ display: 'block', width: '100%', marginTop: '14px', padding: '10px', background: 'rgba(200,169,110,0.08)', border: '0.5px solid rgba(200,169,110,0.3)', borderRadius: '10px', fontSize: '13px', fontWeight: 500, color: '#c8a96e', cursor: 'pointer', letterSpacing: '0.02em' }}
+        >
+          Charger plus
+        </button>
+      )}
+    </div>
+  )
+}
+
 function NewDocsIndicator() {
   const [hasNew, setHasNew] = useState(false)
 
@@ -72,6 +119,8 @@ export default function PatrimoineDashboard({ user, data }: {
   
   const gainEur = data?.gainReel || 0
   const gainPct = data?.gainPct || 0
+
+  console.log('RELEVES length:', RELEVES.length)
 
   return (
   <div style={{ minHeight: '100vh', background: '#0d0f14', color: '#e8eaf0', fontFamily: 'system-ui, sans-serif' }}>
@@ -181,6 +230,8 @@ export default function PatrimoineDashboard({ user, data }: {
           <p style={{ fontSize: '12px', color: 'rgba(232,234,240,0.35)', marginBottom: '16px' }}>10 derniers releves trimestriels</p>
           <PatrimoineChart data={RELEVES} />
         </div>
+
+        <HistoriquePerformances releves={RELEVES} />
 
         {/* Indicateurs */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
