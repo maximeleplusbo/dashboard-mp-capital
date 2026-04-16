@@ -3,6 +3,54 @@ import { auth0 } from '@/lib/auth0'
 import { getClientData } from '@/lib/sheets'
 import { NextResponse } from 'next/server'
 
+function generateTableauXml(
+  releves: { quarter: string; value: number }[],
+  fmt: (n: number) => string
+): string {
+  const cellWidth = '2200'
+  const rows: string[] = []
+
+  // Header row
+  rows.push(
+    `<w:tr>` +
+      `<w:tc><w:tcPr><w:tcW w:w="${cellWidth}" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="1F3864"/></w:tcPr><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="18"/></w:rPr><w:t>Trimestre</w:t></w:r></w:p></w:tc>` +
+      `<w:tc><w:tcPr><w:tcW w:w="${cellWidth}" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="1F3864"/></w:tcPr><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="18"/></w:rPr><w:t>Valeur (</w:t></w:r><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="18"/></w:rPr><w:t>€)</w:t></w:r></w:p></w:tc>` +
+      `<w:tc><w:tcPr><w:tcW w:w="${cellWidth}" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="1F3864"/></w:tcPr><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="18"/></w:rPr><w:t>Variation (</w:t></w:r><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="18"/></w:rPr><w:t>€)</w:t></w:r></w:p></w:tc>` +
+      `<w:tc><w:tcPr><w:tcW w:w="${cellWidth}" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="1F3864"/></w:tcPr><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="18"/></w:rPr><w:t>Variation (%)</w:t></w:r></w:p></w:tc>` +
+    `</w:tr>`
+  )
+
+  // Data rows
+  for (let i = 0; i < releves.length; i++) {
+    const r = releves[i]
+    const prev = i > 0 ? releves[i - 1].value : r.value
+    const variationEur = r.value - prev
+    const variationPct = prev > 0 ? ((variationEur / prev) * 100) : 0
+    const fillColor = i % 2 === 0 ? 'F2F2F2' : 'FFFFFF'
+    const sign = (n: number) => (n >= 0 ? '+ ' : '- ')
+
+    rows.push(
+      `<w:tr>` +
+        `<w:tc><w:tcPr><w:tcW w:w="${cellWidth}" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="${fillColor}"/></w:tcPr><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/></w:rPr><w:t>${r.quarter}</w:t></w:r></w:p></w:tc>` +
+        `<w:tc><w:tcPr><w:tcW w:w="${cellWidth}" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="${fillColor}"/></w:tcPr><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/></w:rPr><w:t>${fmt(r.value)} €</w:t></w:r></w:p></w:tc>` +
+        `<w:tc><w:tcPr><w:tcW w:w="${cellWidth}" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="${fillColor}"/></w:tcPr><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/></w:rPr><w:t>${i === 0 ? '-' : sign(variationEur) + fmt(Math.abs(variationEur)) + ' €'}</w:t></w:r></w:p></w:tc>` +
+        `<w:tc><w:tcPr><w:tcW w:w="${cellWidth}" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="${fillColor}"/></w:tcPr><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/></w:rPr><w:t>${i === 0 ? '-' : sign(variationPct) + Math.abs(variationPct).toFixed(2) + ' %'}</w:t></w:r></w:p></w:tc>` +
+      `</w:tr>`
+    )
+  }
+
+  return `<w:tbl><w:tblPr><w:tblStyle w:val="TableGrid"/><w:tblW w:w="0" w:type="auto"/><w:tblBorders>` +
+    `<w:top w:val="single" w:sz="4" w:space="0" w:color="BFBFBF"/>` +
+    `<w:left w:val="single" w:sz="4" w:space="0" w:color="BFBFBF"/>` +
+    `<w:bottom w:val="single" w:sz="4" w:space="0" w:color="BFBFBF"/>` +
+    `<w:right w:val="single" w:sz="4" w:space="0" w:color="BFBFBF"/>` +
+    `<w:insideH w:val="single" w:sz="4" w:space="0" w:color="BFBFBF"/>` +
+    `<w:insideV w:val="single" w:sz="4" w:space="0" w:color="BFBFBF"/>` +
+    `</w:tblBorders></w:tblPr>` +
+    rows.join('') +
+    `</w:tbl>`
+}
+
 export async function GET() {
   const session = await auth0.getSession()
   if (!session) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
@@ -49,12 +97,22 @@ DATEDUJOUR: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'lon
     name.startsWith('word/') && name.endsWith('.xml')
   )
 
+  const tableauXml = generateTableauXml(data.releves, fmt)
+
   for (const fileName of filesToProcess) {
     const xmlFile = zip.file(fileName)
     if (!xmlFile) continue
     let xml = await xmlFile.async('string')
     for (const [key, value] of Object.entries(replacements)) {
       xml = xml.split('{{' + key + '}}').join(value)
+    }
+    // Replace {{TABLEAU_PERFORMANCE}} — the placeholder may be wrapped in a <w:p> paragraph,
+    // so we replace the entire enclosing paragraph to insert a valid <w:tbl> block.
+    const tableauRegex = /<w:p\b[^>]*>(?:<w:pPr>[\s\S]*?<\/w:pPr>)?[\s\S]*?\{\{TABLEAU_PERFORMANCE\}\}[\s\S]*?<\/w:p>/g
+    if (tableauRegex.test(xml)) {
+      xml = xml.replace(tableauRegex, tableauXml)
+    } else {
+      xml = xml.split('{{TABLEAU_PERFORMANCE}}').join(tableauXml)
     }
     zip.file(fileName, xml)
   }
