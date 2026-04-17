@@ -241,7 +241,11 @@ export default function PatrimoineDashboard({ user, data }: {
           </div>
           <p style={{ fontSize: '12px', color: 'rgba(232,234,240,0.35)', marginBottom: '16px' }}>10 derniers releves trimestriels</p>
           <div style={{ height: '200px' }}>
-            <PatrimoineChart data={RELEVES} />
+            {RELEVES.length === 0 ? (
+              <p style={{ fontSize: '13px', color: 'rgba(232,234,240,0.3)', textAlign: 'center', paddingTop: '80px' }}>Aucune donnée disponible</p>
+            ) : (
+              <PatrimoineChart data={RELEVES} />
+            )}
           </div>
         </div>
 

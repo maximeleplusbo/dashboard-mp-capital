@@ -25,14 +25,14 @@ function generateTableauXml(
   dataRows: { quarter: string; value: number; versement: number; retrait: number }[],
   fmt: (n: number) => string
 ): string {
-  if (!dataRows || dataRows.length === 0) return ''
+  if (!releves || releves.length < 2) return ''
 
   const GOLD = 'C8A96E'
   const BLACK = '000000'
   const WHITE = 'FFFFFF'
   const LIGHT = 'F5F5F5'
 
-  const dataByQuarter = new Map(dataRows.map(d => [d.quarter, d]))
+  const dataByQuarter = new Map((dataRows || []).map(d => [d.quarter, d]))
 
   const lignes = []
   for (let i = 1; i < releves.length; i++) {
@@ -193,22 +193,20 @@ DATEDUJOUR: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'lon
     for (const [key, value] of Object.entries(replacements)) {
       xml = xml.split('{{' + key + '}}').join(value)
     }
-    console.log('Processing file:', fileName, '| contains TABLEAU_PERFORMANCE:', xml.includes('{{TABLEAU_PERFORMANCE}}'))
+    console.log('Processing file:', fileName, '| contains TABLEAU_PERFORMANCE:', xml.includes('{{TABLEAU_PERFORMANCE}}'), '| contains TABLEAU_MOUVEMENTS:', xml.includes('{{TABLEAU_MOUVEMENTS}}'))
     if (xml.includes('{{TABLEAU_PERFORMANCE}}')) {
       const tableXml = generateTableauXml(data.releves, data.dataRows || [], fmt)
-      console.log('tableau XML length:', tableXml.length)
-      xml = xml.replace(/<w:p\b[^>]*>(?:[^<]|<(?!\/w:p>))*\{\{TABLEAU_PERFORMANCE\}\}(?:[^<]|<(?!\/w:p>))*<\/w:p>/, tableXml)
-      if (xml.includes('{{TABLEAU_PERFORMANCE}}')) {
-        xml = xml.split('{{TABLEAU_PERFORMANCE}}').join(tableXml)
-      }
+      console.log('tableXml preview:', tableXml.substring(0, 100))
+      console.log('tableXml length:', tableXml.length)
+      xml = xml.split('{{TABLEAU_PERFORMANCE}}').join(tableXml)
+      console.log('after replace, still contains TABLEAU_PERFORMANCE:', xml.includes('{{TABLEAU_PERFORMANCE}}'))
     }
     if (xml.includes('{{TABLEAU_MOUVEMENTS}}')) {
       const mouvXml = generateTableauMouvementsXml(data.dataRows || [], fmt)
-      console.log('mouvements XML length:', mouvXml.length)
-      xml = xml.replace(/<w:p\b[^>]*>(?:[^<]|<(?!\/w:p>))*\{\{TABLEAU_MOUVEMENTS\}\}(?:[^<]|<(?!\/w:p>))*<\/w:p>/, mouvXml)
-      if (xml.includes('{{TABLEAU_MOUVEMENTS}}')) {
-        xml = xml.split('{{TABLEAU_MOUVEMENTS}}').join(mouvXml)
-      }
+      console.log('mouvXml preview:', mouvXml.substring(0, 100))
+      console.log('mouvXml length:', mouvXml.length)
+      xml = xml.split('{{TABLEAU_MOUVEMENTS}}').join(mouvXml)
+      console.log('after replace, still contains TABLEAU_MOUVEMENTS:', xml.includes('{{TABLEAU_MOUVEMENTS}}'))
     }
     zip.file(fileName, xml)
   }
