@@ -192,21 +192,21 @@ DATEDUJOUR: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'lon
     for (const [key, value] of Object.entries(replacements)) {
       xml = xml.split('{{' + key + '}}').join(value)
     }
-    console.log('xml contains TABLEAU_PERFORMANCE:', xml.includes('{{TABLEAU_PERFORMANCE}}'))
+    console.log('xml includes TABLEAU_PERFORMANCE:', xml.includes('{{TABLEAU_PERFORMANCE}}'))
     if (xml.includes('{{TABLEAU_PERFORMANCE}}')) {
       const tableXml = generateTableauXml(data.releves, data.dataRows || [], fmt)
       console.log('tableau XML length:', tableXml.length)
-      xml = xml.replace(/<w:p\b[^>]*>(?:(?!<\/w:p>)[\s\S])*\{\{TABLEAU_PERFORMANCE\}\}(?:(?!<\/w:p>)[\s\S])*<\/w:p>/, tableXml)
+      xml = xml.replace(/<w:p\b[^>]*>(?:[^<]|<(?!\/w:p>))*\{\{TABLEAU_PERFORMANCE\}\}(?:[^<]|<(?!\/w:p>))*<\/w:p>/, tableXml)
       if (xml.includes('{{TABLEAU_PERFORMANCE}}')) {
         xml = xml.split('{{TABLEAU_PERFORMANCE}}').join(tableXml)
       }
     }
     if (xml.includes('{{TABLEAU_MOUVEMENTS}}')) {
-      const mouvementsXml = generateTableauMouvementsXml(data.dataRows || [], fmt)
-      console.log('mouvements XML length:', mouvementsXml.length)
-      xml = xml.replace(/<w:p\b[^>]*>(?:(?!<\/w:p>)[\s\S])*\{\{TABLEAU_MOUVEMENTS\}\}(?:(?!<\/w:p>)[\s\S])*<\/w:p>/, mouvementsXml)
+      const mouvXml = generateTableauMouvementsXml(data.dataRows || [], fmt)
+      console.log('mouvements XML length:', mouvXml.length)
+      xml = xml.replace(/<w:p\b[^>]*>(?:[^<]|<(?!\/w:p>))*\{\{TABLEAU_MOUVEMENTS\}\}(?:[^<]|<(?!\/w:p>))*<\/w:p>/, mouvXml)
       if (xml.includes('{{TABLEAU_MOUVEMENTS}}')) {
-        xml = xml.split('{{TABLEAU_MOUVEMENTS}}').join(mouvementsXml)
+        xml = xml.split('{{TABLEAU_MOUVEMENTS}}').join(mouvXml)
       }
     }
     zip.file(fileName, xml)
