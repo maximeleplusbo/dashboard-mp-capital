@@ -32,11 +32,11 @@ export async function getClientData(email: string) {
   }, 0)
 
   const montantRetire = dataRows.reduce((sum, row) => {
-    return sum + (parseFloat(row[3]) || 0)
+    return sum + Math.abs(parseFloat(row[3]) || 0)
   }, 0)
 
   const nbVersements = dataRows.filter(row => parseFloat(row[2]) > 0).length
-  const nbRetraits = dataRows.filter(row => parseFloat(row[3]) > 0).length
+  const nbRetraits = dataRows.filter(row => Math.abs(parseFloat(row[3]) || 0) > 0).length
 
   const adresseClient = dataRows[0]?.[4] || ''
   const numRefClient = dataRows[0]?.[5] || ''
@@ -54,8 +54,16 @@ export async function getClientData(email: string) {
   
   const capitalNet = montantInvesti - montantRetire
 
+  const dataRowsParsed = dataRows.map(row => ({
+    quarter: row[0] || '',
+    value: parseFloat(row[1]) || 0,
+    versement: parseFloat(row[2]) || 0,
+    retrait: Math.abs(parseFloat(row[3]) || 0),
+  })).filter(r => r.quarter)
+
   return {
     releves,
+    dataRows: dataRowsParsed,
     montantInvesti,
     montantRetire,
     nbVersements,

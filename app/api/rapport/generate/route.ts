@@ -92,8 +92,8 @@ function generateTableauMouvementsXml(
     if (row.versement > 0) {
       mouvements.push({ quarter: row.quarter, type: 'Versement', montant: row.versement })
     }
-    if (row.retrait > 0) {
-      mouvements.push({ quarter: row.quarter, type: 'Retrait', montant: row.retrait })
+    if (Math.abs(row.retrait) > 0) {
+      mouvements.push({ quarter: row.quarter, type: 'Retrait', montant: Math.abs(row.retrait) })
     }
   }
 
