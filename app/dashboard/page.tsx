@@ -10,5 +10,5 @@ export default async function DashboardPage() {
 
   const data = await getClientData(session.user.email!)
 
-  return <PatrimoineDashboard user={session.user} data={data} />
+  return <PatrimoineDashboard user={session.user} data={data as any} />
 }
