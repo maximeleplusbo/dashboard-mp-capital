@@ -192,7 +192,7 @@ DATEDUJOUR: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'lon
     for (const [key, value] of Object.entries(replacements)) {
       xml = xml.split('{{' + key + '}}').join(value)
     }
-    console.log('xml includes TABLEAU_PERFORMANCE:', xml.includes('{{TABLEAU_PERFORMANCE}}'))
+    console.log('Processing file:', fileName, '| contains TABLEAU_PERFORMANCE:', xml.includes('{{TABLEAU_PERFORMANCE}}'))
     if (xml.includes('{{TABLEAU_PERFORMANCE}}')) {
       const tableXml = generateTableauXml(data.releves, data.dataRows || [], fmt)
       console.log('tableau XML length:', tableXml.length)
@@ -211,6 +211,7 @@ DATEDUJOUR: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'lon
     }
     zip.file(fileName, xml)
   }
+  console.log('Files processed:', filesToProcess.join(', '))
 
   const outputBuffer = await zip.generateAsync({ type: 'nodebuffer' })
   console.log('buffer size:', outputBuffer.length)
