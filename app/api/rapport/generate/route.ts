@@ -124,7 +124,7 @@ export async function GET() {
 
   const rawData = await getClientData(session.user.email!)
   if (!rawData) return NextResponse.json({ error: 'Aucune donnée' }, { status: 404 })
-  const data = rawData as {
+  const data = rawData as unknown as {
     releves: { quarter: string; value: number }[]
     dataRows: ClientDataRow[]
     montantInvesti: number
@@ -137,8 +137,6 @@ export async function GET() {
     dernierTrimestre: string
     adresseClient: string
     numRefClient: string
-    premiereValeur: number
-    [key: string]: unknown
   }
 
   const fmt = (n: number) =>
