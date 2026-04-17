@@ -131,6 +131,8 @@ export default function PatrimoineDashboard({ user, data }: {
   const gainPct = data?.gainPct || 0
 
   console.log('RELEVES length:', RELEVES.length)
+  console.log('RELEVES for chart:', RELEVES.length, JSON.stringify(RELEVES))
+  console.log('data?.releves:', data?.releves)
 
   return (
   <div style={{ minHeight: '100vh', background: '#0d0f14', color: '#e8eaf0', fontFamily: 'system-ui, sans-serif' }}>
