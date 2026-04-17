@@ -38,12 +38,16 @@ function HistoriquePerformances({ releves, dataRows }: { releves: { quarter: str
   const dataByQuarter = new Map(dataRows.map(d => [d.quarter, d]))
 
   const performances = releves.map((r, i) => {
-    if (i === 0) return { quarter: r.quarter, pct: null }
-    const ouverture = releves[i - 1].value
     const cloture = r.value
     const row = dataByQuarter.get(r.quarter)
     const versement = row?.versement || 0
     const retrait = row?.retrait || 0
+    if (i === 0) {
+      const pct = versement > 0 ? ((cloture - versement) / versement) * 100 : null
+      console.log('perf calc (first):', r.quarter, cloture, versement, pct)
+      return { quarter: r.quarter, pct }
+    }
+    const ouverture = releves[i - 1].value
     const pct = ouverture > 0 ? ((cloture - ouverture - versement + retrait) / ouverture) * 100 : 0
     console.log('perf calc:', r.quarter, ouverture, cloture, versement, retrait, pct)
     return { quarter: r.quarter, pct }

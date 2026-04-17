@@ -35,14 +35,23 @@ function generateTableauXml(
   const dataByQuarter = new Map((dataRows || []).map(d => [d.quarter, d]))
 
   const lignes = []
-  for (let i = 1; i < releves.length; i++) {
-    const ouverture = releves[i - 1].value
+  for (let i = 0; i < releves.length; i++) {
     const cloture = releves[i].value
     const row = dataByQuarter.get(releves[i].quarter)
     const versement = row?.versement || 0
     const retrait = row?.retrait || 0
-    const gain = cloture - ouverture - versement + retrait
-    const perf = ouverture > 0 ? (gain / ouverture) * 100 : 0
+    let ouverture: number
+    let gain: number
+    let perf: number
+    if (i === 0) {
+      ouverture = versement
+      gain = cloture - versement
+      perf = versement > 0 ? (gain / versement) * 100 : 0
+    } else {
+      ouverture = releves[i - 1].value
+      gain = cloture - ouverture - versement + retrait
+      perf = ouverture > 0 ? (gain / ouverture) * 100 : 0
+    }
     const gainStr = (gain >= 0 ? '+ ' : '- ') + fmt(Math.abs(gain)) + ' \u20ac'
     const perfStr = (perf >= 0 ? '+ ' : '- ') + Math.abs(perf).toFixed(2) + ' %'
     const bg = i % 2 === 0 ? LIGHT : WHITE
