@@ -119,6 +119,7 @@ function generateTableauMouvementsXml(
 }
 
 export async function GET() {
+  try {
   const session = await auth0.getSession()
   if (!session) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
 
@@ -169,10 +170,12 @@ DATEDUJOUR: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'lon
 
   const templateUrl = process.env.RAPPORT_TEMPLATE_URL!
   const templateRes = await fetch(templateUrl)
+  console.log('template status:', templateRes.status)
   const templateBuffer = await templateRes.arrayBuffer()
 
   const JSZip = (await import('jszip')).default
   const zip = await JSZip.loadAsync(templateBuffer)
+  console.log('zip files:', Object.keys(zip.files).join(', '))
 
   const filesToProcess = Object.keys(zip.files).filter(name =>
     name.startsWith('word/') && name.endsWith('.xml')
@@ -203,6 +206,7 @@ DATEDUJOUR: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'lon
   }
 
   const outputBuffer = await zip.generateAsync({ type: 'nodebuffer' })
+  console.log('buffer size:', outputBuffer.length)
 
   const jobRes = await fetch('https://api.cloudconvert.com/v2/jobs', {
     method: 'POST',
@@ -228,7 +232,7 @@ DATEDUJOUR: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'lon
   })
 
   const job = await jobRes.json()
-  console.log('CC job:', JSON.stringify(job).substring(0, 500))
+  console.log('CC job full:', JSON.stringify(job))
 
   if (!job.data || !job.data.tasks) {
     return NextResponse.json({ error: 'CloudConvert error', details: job }, { status: 500 })
@@ -274,4 +278,8 @@ DATEDUJOUR: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'lon
       'Content-Disposition': 'attachment; filename="rapport-' + data.dernierTrimestre.replace(' ', '-') + '.pdf"',
     }
   })
+  } catch (error) {
+    console.error('RAPPORT ERROR:', error)
+    return NextResponse.json({ error: 'Erreur interne', details: String(error) }, { status: 500 })
+  }
 }
