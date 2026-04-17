@@ -25,6 +25,8 @@ function generateTableauXml(
   dataRows: { quarter: string; value: number; versement: number; retrait: number }[],
   fmt: (n: number) => string
 ): string {
+  if (!dataRows || dataRows.length === 0) return ''
+
   const GOLD = 'C8A96E'
   const BLACK = '000000'
   const WHITE = 'FFFFFF'
@@ -78,6 +80,8 @@ function generateTableauMouvementsXml(
   dataRows: { quarter: string; value: number; versement: number; retrait: number }[],
   fmt: (n: number) => string
 ): string {
+  if (!dataRows || dataRows.length === 0) return ''
+
   const GOLD = 'C8A96E'
   const BLACK = '000000'
   const WHITE = 'FFFFFF'
@@ -189,14 +193,14 @@ DATEDUJOUR: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'lon
       xml = xml.split('{{' + key + '}}').join(value)
     }
     if (xml.includes('{{TABLEAU_PERFORMANCE}}')) {
-      const tableXml = generateTableauXml(data.releves, data.dataRows, fmt)
+      const tableXml = generateTableauXml(data.releves, data.dataRows || [], fmt)
       xml = xml.replace(/<w:p\b[^>]*>(?:(?!<\/w:p>)[\s\S])*\{\{TABLEAU_PERFORMANCE\}\}(?:(?!<\/w:p>)[\s\S])*<\/w:p>/, tableXml)
       if (xml.includes('{{TABLEAU_PERFORMANCE}}')) {
         xml = xml.split('{{TABLEAU_PERFORMANCE}}').join(tableXml)
       }
     }
     if (xml.includes('{{TABLEAU_MOUVEMENTS}}')) {
-      const mouvementsXml = generateTableauMouvementsXml(data.dataRows, fmt)
+      const mouvementsXml = generateTableauMouvementsXml(data.dataRows || [], fmt)
       xml = xml.replace(/<w:p\b[^>]*>(?:(?!<\/w:p>)[\s\S])*\{\{TABLEAU_MOUVEMENTS\}\}(?:(?!<\/w:p>)[\s\S])*<\/w:p>/, mouvementsXml)
       if (xml.includes('{{TABLEAU_MOUVEMENTS}}')) {
         xml = xml.split('{{TABLEAU_MOUVEMENTS}}').join(mouvementsXml)
