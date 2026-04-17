@@ -11,23 +11,27 @@ export default function PatrimoineChart({ data }: { data: Releve[] }) {
   const tooltipRef = useRef<HTMLDivElement>(null)
 
   const POINT_W = 90
-  const TOTAL_W = POINT_W * data.length
   const H       = 200
   const PAD_T   = 30, PAD_B = 28, PAD_L = 10
 
-  const values = data.map(d => d.value)
-  const minVal = Math.min(...values)
-  const maxVal = Math.max(...values)
-  const range  = maxVal - minVal
-
-  const toY = (v: number) => PAD_T + (1 - (v - minVal) / range) * (H - PAD_T - PAD_B)
-  const toX = (i: number) => PAD_L + i * POINT_W + POINT_W / 2
-
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas) return
+    if (!canvas || data.length === 0) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
+
+    const values = data.map(d => d.value)
+    const TOTAL_W = POINT_W * data.length
+    const minVal = Math.min(...values)
+    const maxVal = Math.max(...values)
+    const range  = maxVal - minVal
+    const safeRange = range === 0 ? 1 : range
+
+    const toY = (v: number) => PAD_T + (1 - (v - minVal) / safeRange) * (H - PAD_T - PAD_B)
+    const toX = (i: number) => PAD_L + i * POINT_W + POINT_W / 2
+
+    canvas.width = TOTAL_W
+    canvas.height = H
 
     ctx.clearRect(0, 0, TOTAL_W, H)
 
@@ -77,6 +81,8 @@ export default function PatrimoineChart({ data }: { data: Releve[] }) {
     data.forEach((d, i) => ctx.fillText(d.quarter, toX(i), H - 8))
   }, [data])
 
+  const TOTAL_W = POINT_W * data.length
+
   useEffect(() => {
     const wrap = wrapRef.current
     if (wrap) wrap.scrollLeft = TOTAL_W
@@ -96,6 +102,13 @@ export default function PatrimoineChart({ data }: { data: Releve[] }) {
   }, [])
 
   const showTooltip = (mx: number) => {
+    const values = data.map(d => d.value)
+    const minVal = Math.min(...values)
+    const maxVal = Math.max(...values)
+    const safeRange = (maxVal - minVal) === 0 ? 1 : (maxVal - minVal)
+    const toX = (i: number) => PAD_L + i * POINT_W + POINT_W / 2
+    const toY = (v: number) => PAD_T + (1 - (v - minVal) / safeRange) * (H - PAD_T - PAD_B)
+
     let closest = -1, minDist = 999
     for (let i = 0; i < values.length; i++) {
       const dist = Math.abs(toX(i) - mx)
