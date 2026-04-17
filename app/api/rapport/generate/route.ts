@@ -143,6 +143,7 @@ export async function GET() {
     adresseClient: string
     numRefClient: string
   }
+  console.log('data received, releves:', data.releves?.length, 'dataRows:', data.dataRows?.length)
 
   const fmt = (n: number) =>
     new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
@@ -287,7 +288,8 @@ DATEDUJOUR: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'lon
     }
   })
   } catch (error) {
-    console.error('RAPPORT ERROR:', error)
-    return NextResponse.json({ error: 'Erreur interne', details: String(error) }, { status: 500 })
+    console.error('FULL ERROR:', error instanceof Error ? error.message : String(error))
+    console.error('FULL STACK:', error instanceof Error ? error.stack : 'no stack')
+    return NextResponse.json({ error: 'Erreur interne', details: error instanceof Error ? error.message : String(error) }, { status: 500 })
   }
 }
