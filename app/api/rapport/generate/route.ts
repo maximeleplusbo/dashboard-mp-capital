@@ -3,18 +3,36 @@ import { auth0 } from '@/lib/auth0'
 import { getClientData } from '@/lib/sheets'
 import { NextResponse } from 'next/server'
 
-function generateTableauXml(releves: { quarter: string; value: number }[], fmt: (n: number) => string): string {
+function cell(text: string, bg: string, bold = false, color = '000000', w = '1800') {
+  return '<w:tc><w:tcPr><w:tcW w:w="' + w + '" w:type="dxa"/>' +
+    '<w:shd w:val="clear" w:color="auto" w:fill="' + bg + '"/>' +
+    '<w:tcMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar>' +
+    '</w:tcPr><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr>' +
+    (bold ? '<w:b/>' : '') +
+    '<w:color w:val="' + color + '"/><w:sz w:val="18"/><w:szCs w:val="18"/>' +
+    '</w:rPr><w:t>' + text + '</w:t></w:r></w:p></w:tc>'
+}
+
+function generateTableauXml(
+  releves: { quarter: string; value: number }[],
+  dataRows: { quarter: string; value: number; versement: number; retrait: number }[],
+  fmt: (n: number) => string
+): string {
   const GOLD = 'C8A96E'
   const BLACK = '000000'
   const WHITE = 'FFFFFF'
   const LIGHT = 'F5F5F5'
 
-  const nb = Math.min(4, releves.length - 1)
+  const dataByQuarter = new Map(dataRows.map(d => [d.quarter, d]))
+
   const lignes = []
-  for (let i = releves.length - nb; i < releves.length; i++) {
+  for (let i = 1; i < releves.length; i++) {
     const ouverture = releves[i - 1].value
     const cloture = releves[i].value
-    const gain = cloture - ouverture
+    const row = dataByQuarter.get(releves[i].quarter)
+    const versement = row?.versement || 0
+    const retrait = row?.retrait || 0
+    const gain = cloture - ouverture - versement + retrait
     const perf = ouverture > 0 ? (gain / ouverture) * 100 : 0
     const gainStr = (gain >= 0 ? '+ ' : '- ') + fmt(Math.abs(gain)) + ' \u20ac'
     const perfStr = (perf >= 0 ? '+ ' : '- ') + Math.abs(perf).toFixed(2) + ' %'
@@ -23,19 +41,10 @@ function generateTableauXml(releves: { quarter: string; value: number }[], fmt: 
     lignes.push({ quarter: releves[i].quarter, ouverture, cloture, gainStr, perfStr, bg, gainColor })
   }
 
-  const cell = (text: string, bg: string, bold = false, color = BLACK, w = '1800') =>
-    '<w:tc><w:tcPr><w:tcW w:w="' + w + '" w:type="dxa"/>' +
-    '<w:shd w:val="clear" w:color="auto" w:fill="' + bg + '"/>' +
-    '<w:tcMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar>' +
-    '</w:tcPr><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr>' +
-    (bold ? '<w:b/>' : '') +
-    '<w:color w:val="' + color + '"/><w:sz w:val="18"/><w:szCs w:val="18"/>' +
-    '</w:rPr><w:t>' + text + '</w:t></w:r></w:p></w:tc>'
-
   const headers = ['P\u00e9riode', 'Valeur d\'ouverture', 'Valeur de cl\u00f4ture', 'Gain / Perte (\u20ac)', 'Performance (%)']
   const headerRow = '<w:tr>' + headers.map(h => cell(h, BLACK, true, GOLD)).join('') + '</w:tr>'
 
-  const dataRows = lignes.map(l =>
+  const tableRows = lignes.map(l =>
     '<w:tr>' +
     cell(l.quarter, l.bg, false, BLACK) +
     cell(fmt(l.ouverture) + ' \u20ac', l.bg, false, BLACK) +
@@ -55,7 +64,51 @@ function generateTableauXml(releves: { quarter: string; value: number }[], fmt: 
     '<w:tblGrid>' +
     '<w:gridCol w:w="1800"/><w:gridCol w:w="1800"/><w:gridCol w:w="1800"/><w:gridCol w:w="1800"/><w:gridCol w:w="1800"/>' +
     '</w:tblGrid>' +
-    headerRow + dataRows + '</w:tbl>'
+    headerRow + tableRows + '</w:tbl>'
+}
+
+function generateTableauMouvementsXml(
+  dataRows: { quarter: string; value: number; versement: number; retrait: number }[],
+  fmt: (n: number) => string
+): string {
+  const GOLD = 'C8A96E'
+  const BLACK = '000000'
+  const WHITE = 'FFFFFF'
+  const LIGHT = 'F5F5F5'
+
+  const mouvements: { quarter: string; type: string; montant: number }[] = []
+  for (const row of dataRows) {
+    if (row.versement > 0) {
+      mouvements.push({ quarter: row.quarter, type: 'Versement', montant: row.versement })
+    }
+    if (row.retrait > 0) {
+      mouvements.push({ quarter: row.quarter, type: 'Retrait', montant: row.retrait })
+    }
+  }
+
+  const headers = ['Trimestre', 'Type', 'Montant']
+  const headerRow = '<w:tr>' + headers.map(h => cell(h, BLACK, true, GOLD, '3000')).join('') + '</w:tr>'
+
+  const tableRows = mouvements.map((m, i) => {
+    const bg = i % 2 === 0 ? LIGHT : WHITE
+    return '<w:tr>' +
+      cell(m.quarter, bg, false, BLACK, '3000') +
+      cell(m.type, bg, false, BLACK, '3000') +
+      cell(fmt(m.montant) + ' \u20ac', bg, false, BLACK, '3000') +
+      '</w:tr>'
+  }).join('')
+
+  return '<w:tbl>' +
+    '<w:tblPr><w:tblW w:w="9000" w:type="dxa"/>' +
+    '<w:tblBorders>' +
+    '<w:top w:val="single" w:sz="4" w:space="0" w:color="' + GOLD + '"/>' +
+    '<w:bottom w:val="single" w:sz="4" w:space="0" w:color="' + GOLD + '"/>' +
+    '<w:insideH w:val="single" w:sz="2" w:space="0" w:color="DDDDDD"/>' +
+    '</w:tblBorders></w:tblPr>' +
+    '<w:tblGrid>' +
+    '<w:gridCol w:w="3000"/><w:gridCol w:w="3000"/><w:gridCol w:w="3000"/>' +
+    '</w:tblGrid>' +
+    headerRow + tableRows + '</w:tbl>'
 }
 
 export async function GET() {
@@ -112,10 +165,17 @@ DATEDUJOUR: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'lon
       xml = xml.split('{{' + key + '}}').join(value)
     }
     if (xml.includes('{{TABLEAU_PERFORMANCE}}')) {
-      const tableXml = generateTableauXml(data.releves, fmt)
+      const tableXml = generateTableauXml(data.releves, data.dataRows, fmt)
       xml = xml.replace(/<w:p\b[^>]*>(?:(?!<\/w:p>)[\s\S])*\{\{TABLEAU_PERFORMANCE\}\}(?:(?!<\/w:p>)[\s\S])*<\/w:p>/, tableXml)
       if (xml.includes('{{TABLEAU_PERFORMANCE}}')) {
         xml = xml.split('{{TABLEAU_PERFORMANCE}}').join(tableXml)
+      }
+    }
+    if (xml.includes('{{TABLEAU_MOUVEMENTS}}')) {
+      const mouvementsXml = generateTableauMouvementsXml(data.dataRows, fmt)
+      xml = xml.replace(/<w:p\b[^>]*>(?:(?!<\/w:p>)[\s\S])*\{\{TABLEAU_MOUVEMENTS\}\}(?:(?!<\/w:p>)[\s\S])*<\/w:p>/, mouvementsXml)
+      if (xml.includes('{{TABLEAU_MOUVEMENTS}}')) {
+        xml = xml.split('{{TABLEAU_MOUVEMENTS}}').join(mouvementsXml)
       }
     }
     zip.file(fileName, xml)
