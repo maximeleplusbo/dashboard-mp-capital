@@ -3,6 +3,13 @@ import { auth0 } from '@/lib/auth0'
 import { getClientData } from '@/lib/sheets'
 import { NextResponse } from 'next/server'
 
+interface ClientDataRow {
+  quarter: string
+  value: number
+  versement: number
+  retrait: number
+}
+
 function cell(text: string, bg: string, bold = false, color = '000000', w = '1800') {
   return '<w:tc><w:tcPr><w:tcW w:w="' + w + '" w:type="dxa"/>' +
     '<w:shd w:val="clear" w:color="auto" w:fill="' + bg + '"/>' +
@@ -115,8 +122,24 @@ export async function GET() {
   const session = await auth0.getSession()
   if (!session) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
 
-  const data = await getClientData(session.user.email!)
-  if (!data) return NextResponse.json({ error: 'Aucune donnée' }, { status: 404 })
+  const rawData = await getClientData(session.user.email!)
+  if (!rawData) return NextResponse.json({ error: 'Aucune donnée' }, { status: 404 })
+  const data = rawData as {
+    releves: { quarter: string; value: number }[]
+    dataRows: ClientDataRow[]
+    montantInvesti: number
+    montantRetire: number
+    derniereValeur: number
+    gainReel: number
+    gainPct: number
+    gainTrimestre: number
+    gainTrimestrePct: number
+    dernierTrimestre: string
+    adresseClient: string
+    numRefClient: string
+    premiereValeur: number
+    [key: string]: unknown
+  }
 
   const fmt = (n: number) =>
     new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
