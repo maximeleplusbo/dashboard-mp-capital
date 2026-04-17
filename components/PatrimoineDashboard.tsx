@@ -26,16 +26,26 @@ type ClientData = {
   avantDernierTrimestre: string
   premiereValeur: number
   derniereValeur: number
+  dataRows: { quarter: string; value: number; versement: number; retrait: number }[]
 } | null
 
-function HistoriquePerformances({ releves }: { releves: { quarter: string; value: number }[] }) {
-  console.log('HistoriquePerformances rendered, releves:', releves.length)
+function HistoriquePerformances({ releves, dataRows }: { releves: { quarter: string; value: number }[], dataRows: { quarter: string; value: number; versement: number; retrait: number }[] }) {
+  console.log('HistoriquePerformances rendered, releves:', releves.length, 'dataRows:', dataRows.length)
+  console.log('dataRows sample:', JSON.stringify(dataRows.slice(0, 3)))
+  console.log('releves sample:', JSON.stringify(releves.slice(0, 3)))
   const [visibleCount, setVisibleCount] = useState(20)
+
+  const dataByQuarter = new Map(dataRows.map(d => [d.quarter, d]))
 
   const performances = releves.map((r, i) => {
     if (i === 0) return { quarter: r.quarter, pct: null }
-    const prev = releves[i - 1].value
-    const pct = prev > 0 ? ((r.value - prev) / prev) * 100 : 0
+    const ouverture = releves[i - 1].value
+    const cloture = r.value
+    const row = dataByQuarter.get(r.quarter)
+    const versement = row?.versement || 0
+    const retrait = row?.retrait || 0
+    const pct = ouverture > 0 ? ((cloture - ouverture - versement + retrait) / ouverture) * 100 : 0
+    console.log('perf calc:', r.quarter, ouverture, cloture, versement, retrait, pct)
     return { quarter: r.quarter, pct }
   }).reverse()
 
@@ -228,10 +238,12 @@ export default function PatrimoineDashboard({ user, data }: {
             <p style={{ fontSize: '11px', color: 'rgba(200,169,110,0.6)' }}>{"<- Glisser pour naviguer"}</p>
           </div>
           <p style={{ fontSize: '12px', color: 'rgba(232,234,240,0.35)', marginBottom: '16px' }}>10 derniers releves trimestriels</p>
-          <PatrimoineChart data={RELEVES} />
+          <div style={{ height: '200px' }}>
+            <PatrimoineChart data={RELEVES} />
+          </div>
         </div>
 
-        <HistoriquePerformances releves={RELEVES} />
+        <HistoriquePerformances releves={RELEVES} dataRows={data?.dataRows || []} />
 
         {/* Indicateurs */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
