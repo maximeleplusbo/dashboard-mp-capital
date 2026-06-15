@@ -91,6 +91,96 @@ export async function createDirectUpload({
   }
 }
 
+// Durée maximale autorisée par vidéo (Cloudflare réserve cette durée à la
+// création de l'upload). 6 h — largement au-dessus du besoin, ajustable ici.
+const MAX_DURATION_SECONDS = 21600
+
+interface CreateTusUploadParams {
+  title: string
+  summary?: string
+  size: number
+}
+
+/**
+ * Crée un upload Cloudflare Stream via le protocole tus (résumable), nécessaire
+ * pour les fichiers > 200 Mo (l'upload "basique" en un POST y est limité).
+ * tus supporte jusqu'à ~30 Go par vidéo. Le serveur crée l'upload (le token
+ * n'est jamais exposé au client) et renvoie l'URL d'upload tus + l'uid.
+ */
+export async function createTusUpload({
+  title,
+  summary,
+  size,
+}: CreateTusUploadParams): Promise<DirectUploadResult> {
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID
+  const token = process.env.CLOUDFLARE_STREAM_API_TOKEN
+
+  if (!accountId || !token) {
+    throw new Error(
+      'Configuration Cloudflare manquante : CLOUDFLARE_ACCOUNT_ID et/ou CLOUDFLARE_STREAM_API_TOKEN absents.'
+    )
+  }
+
+  if (!Number.isFinite(size) || size <= 0) {
+    throw new Error('Taille de fichier invalide pour l’upload.')
+  }
+
+  const endpoint = `https://api.cloudflare.com/client/v4/accounts/${accountId}/stream?direct_user=true`
+
+  // Upload-Metadata : paires « clé base64(valeur) » séparées par des virgules.
+  const b64 = (s: string) => Buffer.from(s, 'utf8').toString('base64')
+  const uploadMetadata = [
+    `maxDurationSeconds ${b64(String(MAX_DURATION_SECONDS))}`,
+    `name ${b64(title)}`,
+    `summary ${b64(summary ?? '')}`,
+  ].join(',')
+
+  let res: Response
+  try {
+    res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Tus-Resumable': '1.0.0',
+        'Upload-Length': String(Math.floor(size)),
+        'Upload-Metadata': uploadMetadata,
+      },
+    })
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err)
+    throw new Error(`Impossible de contacter Cloudflare Stream : ${reason}`)
+  }
+
+  if (res.status !== 201) {
+    let detail = ''
+    try {
+      detail = (await res.text()).slice(0, 300)
+    } catch {
+      detail = ''
+    }
+    throw new Error(
+      `Échec de la création de l'upload Cloudflare (HTTP ${res.status})` +
+        (detail ? ` : ${detail}` : '')
+    )
+  }
+
+  const uploadURL = res.headers.get('Location') ?? ''
+  let uid = res.headers.get('stream-media-id') ?? ''
+  // Repli : extraire l'uid (32 hex) de l'URL d'upload si l'en-tête manque.
+  if (!uid && uploadURL) {
+    const m = uploadURL.match(/[0-9a-f]{32}/i)
+    if (m) uid = m[0]
+  }
+
+  if (!uploadURL || !uid) {
+    throw new Error(
+      'Réponse Cloudflare incomplète : en-tête Location ou stream-media-id manquant.'
+    )
+  }
+
+  return { uploadURL, uid }
+}
+
 export interface StreamVideo {
   uid: string
   title: string

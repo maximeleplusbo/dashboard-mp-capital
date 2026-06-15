@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, CSSProperties } from 'react'
+import * as tus from 'tus-js-client'
 
 type Status = 'ready' | 'uploading' | 'success' | 'error'
 
@@ -57,7 +58,7 @@ export default function UploadForm() {
       const res = await fetch('/api/admin/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, summary }),
+        body: JSON.stringify({ title, summary, size: file.size }),
       })
 
       const data = await res.json().catch(() => null)
@@ -106,36 +107,31 @@ export default function UploadForm() {
     onProgress: (pct: number) => void
   ): Promise<void> {
     return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest()
-      const formData = new FormData()
-      // Cloudflare Stream direct_upload attend le fichier dans le champ "file".
-      formData.append('file', videoFile)
-
-      xhr.open('POST', uploadURL, true)
-
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable) {
-          onProgress(Math.round((event.loaded / event.total) * 100))
-        }
-      }
-
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
+      // Upload résumable tus : pas de limite des 200 Mo (l'upload a déjà été
+      // créé côté serveur, on reprend ici l'URL one-time via `uploadUrl`).
+      // chunkSize requis par Cloudflare et multiple de 256 Kio.
+      const upload = new tus.Upload(videoFile, {
+        uploadUrl: uploadURL,
+        chunkSize: 52428800, // 50 Mio
+        retryDelays: [0, 3000, 5000, 10000, 20000],
+        onProgress: (bytesUploaded, bytesTotal) => {
+          if (bytesTotal > 0) {
+            onProgress(Math.round((bytesUploaded / bytesTotal) * 100))
+          }
+        },
+        onSuccess: () => {
           onProgress(100)
           resolve()
-        } else {
+        },
+        onError: (err) => {
           reject(
             new Error(
-              `Échec de l’envoi vers Cloudflare (HTTP ${xhr.status}) ${xhr.responseText || ''}`.trim()
+              `Échec de l’envoi vers Cloudflare : ${err instanceof Error ? err.message : String(err)}`
             )
           )
-        }
-      }
-
-      xhr.onerror = () => reject(new Error('Erreur réseau pendant l’envoi du fichier.'))
-      xhr.onabort = () => reject(new Error('Envoi annulé.'))
-
-      xhr.send(formData)
+        },
+      })
+      upload.start()
     })
   }
 
