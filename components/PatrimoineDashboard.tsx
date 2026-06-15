@@ -204,6 +204,13 @@ export default function PatrimoineDashboard({ user, data }: {
             Mes documents
             <NewDocsIndicator />
           </Link>
+
+          <Link href="/videos" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(200,169,110,0.08)', border: '0.5px solid rgba(200,169,110,0.3)', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 500, color: '#c8a96e', textDecoration: 'none', letterSpacing: '0.02em' }}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M5 3.5l5 3.5-5 3.5z" stroke="#c8a96e" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Consulter les analyses
+          </Link>
         </div>
 
         <p style={{ fontSize: '13px', color: 'rgba(232,234,240,0.4)', letterSpacing: '0.04em', marginBottom: '4px' }}>Bonjour, {user.name}</p>
