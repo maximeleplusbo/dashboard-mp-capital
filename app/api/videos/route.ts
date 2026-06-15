@@ -5,15 +5,11 @@ import { listVideos } from '@/lib/cloudflare'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
+  // Accès public : aucune session requise pour consulter la galerie.
+  // Si une session admin existe, on renvoie isAdmin=true pour afficher les
+  // actions d'édition/suppression ; sinon false. La liste est identique pour tous.
   const session = await auth0.getSession()
-  if (!session) {
-    return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-  }
-
-  // Tout membre connecté est autorisé (pas besoin d'être admin).
-  // Le flag isAdmin sert uniquement au front pour décider d'afficher ou non
-  // le bouton supprimer ; la liste des vidéos est identique pour tous.
-  const admin = isAdmin(session.user.email)
+  const admin = session ? isAdmin(session.user.email) : false
   try {
     const videos = await listVideos()
     return NextResponse.json({ videos, isAdmin: admin })
