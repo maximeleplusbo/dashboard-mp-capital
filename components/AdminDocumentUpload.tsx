@@ -24,31 +24,27 @@ export default function AdminDocumentUpload() {
   const [status, setStatus] = useState<Status>('idle')
   const [message, setMessage] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const fetchedRef = useRef(false)
 
-  // Charge la liste des clients à la première ouverture.
+  // Charge la liste des clients à la première ouverture (une seule fois ;
+  // on relance seulement si une erreur a empêché le chargement).
   useEffect(() => {
-    if (!open || clients.length > 0 || clientsLoading) return
-    let active = true
+    if (!open || fetchedRef.current) return
+    fetchedRef.current = true
     setClientsLoading(true)
     setClientsError('')
-    ;(async () => {
-      try {
-        const res = await fetch('/api/admin/clients')
+    fetch('/api/admin/clients')
+      .then(async (res) => {
         const data = await res.json().catch(() => null)
         if (!res.ok) throw new Error(data?.error || `Erreur serveur (HTTP ${res.status})`)
-        if (!active) return
         setClients(Array.isArray(data?.clients) ? data.clients : [])
-      } catch (err) {
-        if (!active) return
+      })
+      .catch((err) => {
+        fetchedRef.current = false // autorise une nouvelle tentative à la réouverture
         setClientsError(err instanceof Error ? err.message : 'Erreur de chargement des clients')
-      } finally {
-        if (active) setClientsLoading(false)
-      }
-    })()
-    return () => {
-      active = false
-    }
-  }, [open, clients.length, clientsLoading])
+      })
+      .finally(() => setClientsLoading(false))
+  }, [open])
 
   function resetAll() {
     setFile(null)
