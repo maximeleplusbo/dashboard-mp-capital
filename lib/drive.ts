@@ -1,6 +1,5 @@
 // lib/drive.ts
 import { google } from 'googleapis'
-import { Readable } from 'stream'
 
 const auth = new google.auth.GoogleAuth({
   credentials: {
@@ -14,32 +13,33 @@ const auth = new google.auth.GoogleAuth({
 
 const drive = google.drive({ version: 'v3', auth })
 
-export async function getOrCreateClientFolder(clientEmail: string): Promise<string> {
+/**
+ * Cherche le dossier d'un client (nommé par son email) sous le dossier racine.
+ * IMPORTANT : on IGNORE les dossiers possédés par le compte de service (il n'a
+ * pas de quota et ne peut pas stocker de fichiers → ce sont des « fantômes »).
+ * On ne garde que les dossiers possédés par le compte qui stocke réellement
+ * (contact.oktopus via n8n). Ne crée jamais de dossier. Renvoie null si aucun
+ * dossier exploitable n'existe encore (n8n le créera au prochain dépôt).
+ */
+export async function findClientFolderId(clientEmail: string): Promise<string | null> {
   const rootFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID!
+  const serviceEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
 
   const res = await drive.files.list({
     q: `name='${clientEmail}' and '${rootFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
-    fields: 'files(id, name)',
+    fields: 'files(id, name, owners(emailAddress))',
   })
 
-  if (res.data.files && res.data.files.length > 0) {
-    return res.data.files[0].id!
-  }
-
-  const folder = await drive.files.create({
-    requestBody: {
-      name: clientEmail,
-      mimeType: 'application/vnd.google-apps.folder',
-      parents: [rootFolderId],
-    },
-    fields: 'id',
-  })
-
-  return folder.data.id!
+  const folders = res.data.files || []
+  const real = folders.find(
+    (f) => !(f.owners || []).some((o) => o.emailAddress === serviceEmail)
+  )
+  return real?.id ?? null
 }
 
 export async function listClientFiles(clientEmail: string) {
-  const folderId = await getOrCreateClientFolder(clientEmail)
+  const folderId = await findClientFolderId(clientEmail)
+  if (!folderId) return []
 
   const res = await drive.files.list({
     q: `'${folderId}' in parents and trashed=false`,
@@ -48,31 +48,6 @@ export async function listClientFiles(clientEmail: string) {
   })
 
   return res.data.files || []
-}
-
-export async function uploadFileToDrive(
-  clientEmail: string,
-  fileName: string,
-  mimeType: string,
-  buffer: Buffer
-) {
-  const folderId = await getOrCreateClientFolder(clientEmail)
-
-  const stream = Readable.from(buffer)
-
-  const res = await drive.files.create({
-    requestBody: {
-      name: fileName,
-      parents: [folderId],
-    },
-    media: {
-      mimeType,
-      body: stream,
-    },
-    fields: 'id, name, createdTime, size',
-  })
-
-  return res.data
 }
 
 export async function getFileDownloadUrl(fileId: string) {
