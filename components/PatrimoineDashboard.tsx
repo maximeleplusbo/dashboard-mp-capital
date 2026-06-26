@@ -4,6 +4,7 @@
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useState, useEffect } from 'react'
+import AdminDocumentUpload from './AdminDocumentUpload'
 
 const PatrimoineChart = dynamic(() => import('./PatrimoineChart'), { ssr: false })
 
@@ -116,9 +117,10 @@ function NewDocsIndicator() {
   )
 }
 
-export default function PatrimoineDashboard({ user, data }: {
+export default function PatrimoineDashboard({ user, data, isAdmin = false }: {
   user: { name?: string, email?: string },
-  data: ClientData
+  data: ClientData,
+  isAdmin?: boolean
 }) {
   const RELEVES = data?.releves || []
   const MONTANT_INVESTI = data?.montantInvesti || 0
@@ -211,6 +213,8 @@ export default function PatrimoineDashboard({ user, data }: {
             </svg>
             Consulter les analyses
           </Link>
+
+          {isAdmin && <AdminDocumentUpload />}
         </div>
 
         <p style={{ fontSize: '13px', color: 'rgba(232,234,240,0.4)', letterSpacing: '0.04em', marginBottom: '4px' }}>Bonjour, {user.name}</p>

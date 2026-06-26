@@ -1,0 +1,74 @@
+// app/api/admin/documents/route.ts
+import { auth0 } from '@/lib/auth0'
+import { isAdmin } from '@/lib/admin'
+import { listClientEmails } from '@/lib/sheets'
+import { uploadFileToDrive } from '@/lib/drive'
+import { NextRequest, NextResponse } from 'next/server'
+
+export async function POST(request: NextRequest) {
+  const session = await auth0.getSession()
+  if (!session) {
+    return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  }
+  if (!isAdmin(session.user.email)) {
+    return NextResponse.json({ error: 'Accès réservé à l’administrateur' }, { status: 403 })
+  }
+
+  const formData = await request.formData()
+  const file = formData.get('file') as File | null
+  const target = ((formData.get('client') as string | null) ?? '').trim()
+  const all = formData.get('all') === 'true'
+
+  if (!file) {
+    return NextResponse.json({ error: 'Aucun fichier' }, { status: 400 })
+  }
+
+  // Détermine les destinataires et valide les emails contre la liste réelle des
+  // clients (évite la création de dossiers Drive arbitraires).
+  let recipients: string[]
+  try {
+    const clients = await listClientEmails()
+    if (all) {
+      recipients = clients
+    } else {
+      if (!target) {
+        return NextResponse.json({ error: 'Aucun client sélectionné' }, { status: 400 })
+      }
+      if (!clients.includes(target)) {
+        return NextResponse.json({ error: 'Client inconnu' }, { status: 400 })
+      }
+      recipients = [target]
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Erreur inconnue'
+    return NextResponse.json({ error: message }, { status: 502 })
+  }
+
+  if (recipients.length === 0) {
+    return NextResponse.json({ error: 'Aucun client destinataire' }, { status: 400 })
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const fileName = file.name
+  const mimeType = file.type || 'application/octet-stream'
+
+  const results = await Promise.allSettled(
+    recipients.map((email) => uploadFileToDrive(email, fileName, mimeType, buffer))
+  )
+
+  const count = results.filter((r) => r.status === 'fulfilled').length
+  const failed = recipients.length - count
+
+  if (count === 0) {
+    const firstError = results.find((r) => r.status === 'rejected') as
+      | PromiseRejectedResult
+      | undefined
+    const reason =
+      firstError && firstError.reason instanceof Error
+        ? firstError.reason.message
+        : 'Échec du dépôt sur Google Drive'
+    return NextResponse.json({ error: reason }, { status: 502 })
+  }
+
+  return NextResponse.json({ success: true, count, failed, total: recipients.length })
+}

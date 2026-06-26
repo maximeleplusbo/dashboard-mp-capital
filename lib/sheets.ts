@@ -9,6 +9,23 @@ const auth = new google.auth.GoogleAuth({
   scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
 })
 
+// Chaque client correspond à un onglet du classeur, nommé par son email.
+// On renvoie donc la liste des onglets contenant un « @ », triée.
+export async function listClientEmails(): Promise<string[]> {
+  const sheets = google.sheets({ version: 'v4', auth })
+
+  const res = await sheets.spreadsheets.get({
+    spreadsheetId: process.env.GOOGLE_SHEET_ID,
+    fields: 'sheets.properties.title',
+  })
+
+  const titles = (res.data.sheets || [])
+    .map((s) => s.properties?.title || '')
+    .filter((t) => t.includes('@'))
+
+  return titles.sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }))
+}
+
 export async function getClientData(email: string) {
   const sheets = google.sheets({ version: 'v4', auth })
   
