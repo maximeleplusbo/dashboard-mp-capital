@@ -2,7 +2,7 @@
 import { auth0 } from '@/lib/auth0'
 import { isAdmin } from '@/lib/admin'
 import { listClientEmails } from '@/lib/sheets'
-import { findClientFolderId } from '@/lib/drive'
+import { getOrCreateClientFolder } from '@/lib/drive'
 import { NextRequest, NextResponse } from 'next/server'
 
 // Même webhook que l'upload client : le compte de service Google n'a pas de
@@ -59,23 +59,21 @@ export async function POST(request: NextRequest) {
   const mimeType = file.type || 'application/octet-stream'
 
   // Dépose le document dans le dossier Drive d'un client via le webhook n8n.
-  // On ne transmet le folderId que s'il existe un vrai dossier (possédé par
-  // contact.oktopus) ; sinon n8n crée le dossier par email.
+  // Le compte de service garantit l'existence du dossier et fournit son id ;
+  // n8n (contact.oktopus) y écrit le fichier.
   async function depositForClient(clientEmail: string): Promise<void> {
-    const folderId = await findClientFolderId(clientEmail)
-    const payload: Record<string, string> = {
-      fileName,
-      mimeType,
-      fileData: base64,
-      clientEmail,
-      clientName: clientEmail,
-    }
-    if (folderId) payload.folderId = folderId
-
+    const folderId = await getOrCreateClientFolder(clientEmail)
     const res = await fetch(N8N_UPLOAD_WEBHOOK, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        fileName,
+        mimeType,
+        fileData: base64,
+        folderId,
+        clientEmail,
+        clientName: clientEmail,
+      }),
     })
     if (!res.ok) {
       throw new Error(`Dépôt échoué pour ${clientEmail} (HTTP ${res.status})`)
