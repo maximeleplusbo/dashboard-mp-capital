@@ -24,7 +24,7 @@ export default async function DashboardPage() {
           </div>
         </section>
       )}
-      <PatrimoineDashboard user={session.user} data={data as any} />
+      <PatrimoineDashboard user={session.user} data={data as any} isAdmin={admin} />
     </>
   )
 }
