@@ -3,6 +3,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
+import AdminClientSwitcher from './AdminClientSwitcher'
 
 type DriveFile = {
   id: string
@@ -13,17 +14,29 @@ type DriveFile = {
   url: string
 }
 
-export default function DocumentsPage({ user }: { user: { name?: string, email?: string } }) {
+export default function DocumentsPage({
+  user,
+  isAdmin = false,
+  clients = [],
+  viewedClient = null,
+}: {
+  user: { name?: string; email?: string }
+  isAdmin?: boolean
+  clients?: string[]
+  viewedClient?: string | null
+}) {
   const [files, setFiles] = useState<DriveFile[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const docsQuery = viewedClient ? `?client=${encodeURIComponent(viewedClient)}` : ''
+
   const fetchFiles = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/documents')
+      const res = await fetch(`/api/documents${docsQuery}`)
       const data = await res.json()
       const files = data.files || []
       setFiles(files)
@@ -89,6 +102,7 @@ export default function DocumentsPage({ user }: { user: { name?: string, email?:
   style={{ height: '32px', width: 'auto', filter: 'brightness(0) invert(1)' }} 
 />
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: 'rgba(232,234,240,0.5)' }}>
+          {isAdmin && <AdminClientSwitcher clients={clients} current={viewedClient} />}
           <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#1a2a4a', border: '1px solid rgba(200,169,110,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 500, color: '#c8a96e' }}>
             {(user.name || '?').charAt(0).toUpperCase()}
           </div>
@@ -96,21 +110,32 @@ export default function DocumentsPage({ user }: { user: { name?: string, email?:
         </div>
       </header>
 
+      {viewedClient && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '10px 16px', background: 'rgba(200,169,110,0.1)', borderBottom: '0.5px solid rgba(200,169,110,0.3)', fontSize: '13px', color: '#c8a96e' }}>
+          <span>👁️ Documents de <strong>{viewedClient}</strong></span>
+          <Link href="/dashboard" style={{ color: '#c8a96e', textDecoration: 'underline' }}>Revenir à mon espace</Link>
+        </div>
+      )}
+
       <main style={{ padding: '32px 28px' }}>
-        <Link href="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'rgba(232,234,240,0.4)', textDecoration: 'none', marginBottom: '24px' }}>
+        <Link href={viewedClient ? `/dashboard?client=${encodeURIComponent(viewedClient)}` : '/dashboard'} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'rgba(232,234,240,0.4)', textDecoration: 'none', marginBottom: '24px' }}>
           {"<- Retour au dashboard"}
         </Link>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px' }}>
           <h1 style={{ fontSize: '22px', fontWeight: 500, color: '#e8eaf0', margin: 0 }}>Mes documents</h1>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#c8a96e', color: '#0d0f14', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 500, cursor: uploading ? 'not-allowed' : 'pointer', opacity: uploading ? 0.6 : 1 }}
-          >
-            {uploading ? 'Envoi...' : '+ Deposer un document'}
-          </button>
-          <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handleUpload} />
+          {!viewedClient && (
+            <>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#c8a96e', color: '#0d0f14', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 500, cursor: uploading ? 'not-allowed' : 'pointer', opacity: uploading ? 0.6 : 1 }}
+              >
+                {uploading ? 'Envoi...' : '+ Deposer un document'}
+              </button>
+              <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handleUpload} />
+            </>
+          )}
         </div>
 
         {error && (

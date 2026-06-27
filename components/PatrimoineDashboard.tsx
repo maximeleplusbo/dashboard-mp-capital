@@ -5,6 +5,7 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useState, useEffect } from 'react'
 import AdminDocumentUpload from './AdminDocumentUpload'
+import AdminClientSwitcher from './AdminClientSwitcher'
 
 const PatrimoineChart = dynamic(() => import('./PatrimoineChart'), { ssr: false })
 
@@ -117,10 +118,12 @@ function NewDocsIndicator() {
   )
 }
 
-export default function PatrimoineDashboard({ user, data, isAdmin = false }: {
+export default function PatrimoineDashboard({ user, data, isAdmin = false, clients = [], viewedClient = null }: {
   user: { name?: string, email?: string },
   data: ClientData,
-  isAdmin?: boolean
+  isAdmin?: boolean,
+  clients?: string[],
+  viewedClient?: string | null
 }) {
   const RELEVES = data?.releves || []
   const MONTANT_INVESTI = data?.montantInvesti || 0
@@ -151,12 +154,20 @@ export default function PatrimoineDashboard({ user, data, isAdmin = false }: {
   style={{ height: '32px', width: 'auto', filter: 'brightness(0) invert(1)' }} 
 />
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: 'rgba(232,234,240,0.5)' }}>
+          {isAdmin && <AdminClientSwitcher clients={clients} current={viewedClient} />}
           <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #1a2a4a, #2a3a6a)', border: '1px solid rgba(200,169,110,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 500, color: '#c8a96e' }}>
             {(user.name || '?').charAt(0).toUpperCase()}
           </div>
           <span>{user.name}</span>
         </div>
       </header>
+
+      {viewedClient && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '10px 16px', background: 'rgba(200,169,110,0.1)', borderBottom: '0.5px solid rgba(200,169,110,0.3)', fontSize: '13px', color: '#c8a96e' }}>
+          <span>👁️ Vous consultez l’espace de <strong>{viewedClient}</strong></span>
+          <Link href="/dashboard" style={{ color: '#c8a96e', textDecoration: 'underline' }}>Revenir à mon espace</Link>
+        </div>
+      )}
 
       {/* Main */}
       <main style={{ padding: '32px 28px' }}>
@@ -199,7 +210,7 @@ export default function PatrimoineDashboard({ user, data, isAdmin = false }: {
   )}
 </button>
 
-          <Link href="/dashboard/documents" style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(200,169,110,0.08)', border: '0.5px solid rgba(200,169,110,0.3)', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 500, color: '#c8a96e', textDecoration: 'none', letterSpacing: '0.02em' }}>
+          <Link href={viewedClient ? `/dashboard/documents?client=${encodeURIComponent(viewedClient)}` : '/dashboard/documents'} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(200,169,110,0.08)', border: '0.5px solid rgba(200,169,110,0.3)', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 500, color: '#c8a96e', textDecoration: 'none', letterSpacing: '0.02em' }}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M2 3.5h10M2 7h10M2 10.5h6" stroke="#c8a96e" strokeWidth="1.3" strokeLinecap="round"/>
             </svg>
@@ -214,7 +225,7 @@ export default function PatrimoineDashboard({ user, data, isAdmin = false }: {
             Consulter les analyses
           </Link>
 
-          {isAdmin && <AdminDocumentUpload />}
+          {isAdmin && !viewedClient && <AdminDocumentUpload />}
         </div>
 
         <p style={{ fontSize: '13px', color: 'rgba(232,234,240,0.4)', letterSpacing: '0.04em', marginBottom: '4px' }}>Bonjour, {user.name}</p>
