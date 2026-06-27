@@ -3,6 +3,7 @@ import { auth0 } from '@/lib/auth0'
 import { isAdmin } from '@/lib/admin'
 import { listClientEmails } from '@/lib/sheets'
 import { uploadClientDocument, uploadCommonDocument } from '@/lib/documents'
+import { notifyNewDocument } from '@/lib/email'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
@@ -34,6 +35,13 @@ export async function POST(request: NextRequest) {
   if (future) {
     try {
       await uploadCommonDocument(fileName, mimeType, buffer)
+      // Notifie les clients actuels (les futurs verront le doc à leur création).
+      try {
+        const clients = await listClientEmails()
+        await notifyNewDocument(clients)
+      } catch {
+        /* notification best-effort */
+      }
       return NextResponse.json({ success: true, mode: 'future' })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Échec du dépôt du document commun'
@@ -68,6 +76,7 @@ export async function POST(request: NextRequest) {
           : 'Échec du dépôt du document'
       return NextResponse.json({ error: reason }, { status: 502 })
     }
+    await notifyNewDocument(clients)
     return NextResponse.json({ success: true, mode: 'members', count, failed, total: clients.length })
   }
 
@@ -81,6 +90,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Client inconnu' }, { status: 400 })
     }
     await uploadClientDocument(target, fileName, mimeType, buffer)
+    await notifyNewDocument([target])
     return NextResponse.json({ success: true, mode: 'client', count: 1 })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Échec du dépôt du document'
