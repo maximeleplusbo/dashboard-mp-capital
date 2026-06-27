@@ -2,13 +2,8 @@
 import { auth0 } from '@/lib/auth0'
 import { isAdmin } from '@/lib/admin'
 import { listClientEmails } from '@/lib/sheets'
-import { getOrCreateClientFolder } from '@/lib/drive'
+import { uploadClientDocument } from '@/lib/documents'
 import { NextRequest, NextResponse } from 'next/server'
-
-// Même webhook que l'upload client : le compte de service Google n'a pas de
-// quota de stockage et ne peut pas écrire de fichier, donc on délègue l'écriture
-// Drive à n8n (qui utilise un vrai compte OAuth disposant d'un quota).
-const N8N_UPLOAD_WEBHOOK = 'https://automations.mailcaptain.io/webhook/mp-capital-upload'
 
 export async function POST(request: NextRequest) {
   const session = await auth0.getSession()
@@ -54,33 +49,13 @@ export async function POST(request: NextRequest) {
   }
 
   const buffer = Buffer.from(await file.arrayBuffer())
-  const base64 = buffer.toString('base64')
   const fileName = file.name
   const mimeType = file.type || 'application/octet-stream'
 
-  // Dépose le document dans le dossier Drive d'un client via le webhook n8n.
-  // Le compte de service garantit l'existence du dossier et fournit son id ;
-  // n8n (contact.oktopus) y écrit le fichier.
-  async function depositForClient(clientEmail: string): Promise<void> {
-    const folderId = await getOrCreateClientFolder(clientEmail)
-    const res = await fetch(N8N_UPLOAD_WEBHOOK, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        fileName,
-        mimeType,
-        fileData: base64,
-        folderId,
-        clientEmail,
-        clientName: clientEmail,
-      }),
-    })
-    if (!res.ok) {
-      throw new Error(`Dépôt échoué pour ${clientEmail} (HTTP ${res.status})`)
-    }
-  }
-
-  const results = await Promise.allSettled(recipients.map((email) => depositForClient(email)))
+  // Dépose le document dans l'espace Supabase de chaque client destinataire.
+  const results = await Promise.allSettled(
+    recipients.map((email) => uploadClientDocument(email, fileName, mimeType, buffer))
+  )
 
   const count = results.filter((r) => r.status === 'fulfilled').length
   const failed = recipients.length - count

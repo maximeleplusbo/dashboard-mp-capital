@@ -10,6 +10,7 @@ type DriveFile = {
   mimeType: string
   createdTime: string
   size: string
+  url: string
 }
 
 export default function DocumentsPage({ user }: { user: { name?: string, email?: string } }) {
@@ -131,7 +132,7 @@ export default function DocumentsPage({ user }: { user: { name?: string, email?:
             files.map((file, i) => (
               <a
                 key={file.id}
-                href={"https://drive.google.com/file/d/" + file.id + "/view"}
+                href={file.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 22px', borderBottom: i < files.length - 1 ? '0.5px solid rgba(255,255,255,0.05)' : 'none', textDecoration: 'none' }}
