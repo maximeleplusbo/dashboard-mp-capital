@@ -104,13 +104,10 @@ export default function AdminDocumentUpload() {
       const data = await res.json().catch(() => null)
       if (!res.ok) throw new Error(data?.error || `Erreur serveur (HTTP ${res.status})`)
 
-      const count: number = data?.count ?? 0
-      const failed: number = data?.failed ?? 0
       setStatus('success')
       setMessage(
         allClients
-          ? `Document envoyé à ${count} client${count > 1 ? 's' : ''}.` +
-              (failed > 0 ? ` (${failed} échec${failed > 1 ? 's' : ''})` : '')
+          ? 'Document commun ajouté — visible par tous les clients (présents et futurs).'
           : `Document envoyé à ${selectedClient}.`
       )
     } catch (err) {
@@ -253,8 +250,8 @@ export default function AdminDocumentUpload() {
                 style={styles.checkbox}
               />
               <span>
-                Tous les clients{' '}
-                {clients.length > 0 && <span style={styles.countHint}>({clients.length})</span>}
+                Document commun à tous les clients{' '}
+                <span style={styles.countHint}>(présents et futurs)</span>
               </span>
             </label>
 

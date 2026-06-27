@@ -2,7 +2,7 @@
 import { auth0 } from '@/lib/auth0'
 import { isAdmin } from '@/lib/admin'
 import { listClientEmails } from '@/lib/sheets'
-import { uploadClientDocument } from '@/lib/documents'
+import { uploadClientDocument, uploadCommonDocument } from '@/lib/documents'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
@@ -17,59 +17,42 @@ export async function POST(request: NextRequest) {
   const formData = await request.formData()
   const file = formData.get('file') as File | null
   const target = ((formData.get('client') as string | null) ?? '').trim()
-  const all = formData.get('all') === 'true'
+  // « all » = document commun à tous les clients, présents ET futurs.
+  const shared = formData.get('all') === 'true'
 
   if (!file) {
     return NextResponse.json({ error: 'Aucun fichier' }, { status: 400 })
-  }
-
-  // Détermine les destinataires et valide les emails contre la liste réelle des
-  // clients (évite la création de dossiers Drive arbitraires).
-  let recipients: string[]
-  try {
-    const clients = await listClientEmails()
-    if (all) {
-      recipients = clients
-    } else {
-      if (!target) {
-        return NextResponse.json({ error: 'Aucun client sélectionné' }, { status: 400 })
-      }
-      if (!clients.includes(target)) {
-        return NextResponse.json({ error: 'Client inconnu' }, { status: 400 })
-      }
-      recipients = [target]
-    }
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Erreur inconnue'
-    return NextResponse.json({ error: message }, { status: 502 })
-  }
-
-  if (recipients.length === 0) {
-    return NextResponse.json({ error: 'Aucun client destinataire' }, { status: 400 })
   }
 
   const buffer = Buffer.from(await file.arrayBuffer())
   const fileName = file.name
   const mimeType = file.type || 'application/octet-stream'
 
-  // Dépose le document dans l'espace Supabase de chaque client destinataire.
-  const results = await Promise.allSettled(
-    recipients.map((email) => uploadClientDocument(email, fileName, mimeType, buffer))
-  )
-
-  const count = results.filter((r) => r.status === 'fulfilled').length
-  const failed = recipients.length - count
-
-  if (count === 0) {
-    const firstError = results.find((r) => r.status === 'rejected') as
-      | PromiseRejectedResult
-      | undefined
-    const reason =
-      firstError && firstError.reason instanceof Error
-        ? firstError.reason.message
-        : 'Échec du dépôt du document'
-    return NextResponse.json({ error: reason }, { status: 502 })
+  // Document commun : stocké une seule fois dans l'espace partagé, fusionné
+  // automatiquement dans « Mes documents » de chaque client (présent ou futur).
+  if (shared) {
+    try {
+      await uploadCommonDocument(fileName, mimeType, buffer)
+      return NextResponse.json({ success: true, shared: true })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Échec du dépôt du document commun'
+      return NextResponse.json({ error: message }, { status: 502 })
+    }
   }
 
-  return NextResponse.json({ success: true, count, failed, total: recipients.length })
+  // Sinon : dépôt pour un client précis (validé contre la liste réelle).
+  if (!target) {
+    return NextResponse.json({ error: 'Aucun client sélectionné' }, { status: 400 })
+  }
+  try {
+    const clients = await listClientEmails()
+    if (!clients.includes(target)) {
+      return NextResponse.json({ error: 'Client inconnu' }, { status: 400 })
+    }
+    await uploadClientDocument(target, fileName, mimeType, buffer)
+    return NextResponse.json({ success: true, shared: false, count: 1 })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Échec du dépôt du document'
+    return NextResponse.json({ error: message }, { status: 502 })
+  }
 }
