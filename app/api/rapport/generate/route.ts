@@ -1,7 +1,8 @@
 // app/api/rapport/generate/route.ts
 import { auth0 } from '@/lib/auth0'
-import { getClientData } from '@/lib/sheets'
-import { NextResponse } from 'next/server'
+import { isAdmin } from '@/lib/admin'
+import { getClientData, listClientEmails } from '@/lib/sheets'
+import { NextRequest, NextResponse } from 'next/server'
 
 interface ClientDataRow {
   quarter: string
@@ -131,12 +132,30 @@ function generateTableauMouvementsXml(
     headerRow + tableRows + '</w:tbl>'
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
   const session = await auth0.getSession()
   if (!session) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
 
-  const rawData = await getClientData(session.user.email!)
+  // Par défaut : rapport du client connecté. Un admin peut générer celui d'un
+  // client précis via ?client=<email> (validé contre la liste réelle).
+  let targetEmail = session.user.email!
+  let targetName = session.user.name || session.user.email || ''
+  const requested = request.nextUrl.searchParams.get('client')?.trim()
+  if (requested && isAdmin(session.user.email)) {
+    try {
+      const clients = await listClientEmails()
+      const match = clients.find((c) => c.toLowerCase() === requested.toLowerCase())
+      if (match) {
+        targetEmail = match
+        targetName = match
+      }
+    } catch {
+      /* on retombe sur le client connecté */
+    }
+  }
+
+  const rawData = await getClientData(targetEmail)
   if (!rawData) return NextResponse.json({ error: 'Aucune donnée' }, { status: 404 })
   const data = rawData as unknown as {
     releves: { quarter: string; value: number }[]
@@ -164,7 +183,7 @@ export async function GET() {
   const replacements: Record<string, string> = {
     TRIMESTRE_EN_COURS: data.dernierTrimestre,
     PERIODE_TRIMESTRE: data.dernierTrimestre,
-    NOM_CLIENT: session.user.name || session.user.email || '',
+    NOM_CLIENT: targetName,
     ADRESSE_CLIENT: data.adresseClient,
     NUM_REF_CLIENT: data.numRefClient,
     DATE_ENTRE_FOND: premierReleve?.quarter || '',

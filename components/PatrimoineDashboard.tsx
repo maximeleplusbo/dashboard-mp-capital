@@ -176,7 +176,9 @@ export default function PatrimoineDashboard({ user, data, isAdmin = false, clien
   onClick={async () => {
     setRapportLoading(true)
     try {
-      const res = await fetch('/api/rapport/generate')
+      const res = await fetch(
+        viewedClient ? `/api/rapport/generate?client=${encodeURIComponent(viewedClient)}` : '/api/rapport/generate'
+      )
       if (!res.ok) throw new Error('Erreur')
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
