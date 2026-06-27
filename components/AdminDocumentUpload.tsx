@@ -19,7 +19,8 @@ export default function AdminDocumentUpload() {
   const [clientsLoading, setClientsLoading] = useState(false)
   const [clientsError, setClientsError] = useState('')
   const [selectedClient, setSelectedClient] = useState('')
-  const [allClients, setAllClients] = useState(false)
+  const [allMembers, setAllMembers] = useState(false) // tous les clients actuels
+  const [allFuture, setAllFuture] = useState(false) // commun, présents + futurs
   const [isDragging, setIsDragging] = useState(false)
   const [status, setStatus] = useState<Status>('idle')
   const [message, setMessage] = useState('')
@@ -49,7 +50,8 @@ export default function AdminDocumentUpload() {
   function resetAll() {
     setFile(null)
     setSelectedClient('')
-    setAllClients(false)
+    setAllMembers(false)
+    setAllFuture(false)
     setStatus('idle')
     setMessage('')
     setIsDragging(false)
@@ -78,7 +80,8 @@ export default function AdminDocumentUpload() {
     if (dropped) selectFile(dropped)
   }
 
-  const canSubmit = !!file && (allClients || !!selectedClient) && status !== 'uploading'
+  const broadcast = allMembers || allFuture
+  const canSubmit = !!file && (broadcast || !!selectedClient) && status !== 'uploading'
 
   async function handleSubmit() {
     if (!file) {
@@ -86,9 +89,9 @@ export default function AdminDocumentUpload() {
       setMessage('Veuillez choisir un document.')
       return
     }
-    if (!allClients && !selectedClient) {
+    if (!broadcast && !selectedClient) {
       setStatus('error')
-      setMessage('Veuillez choisir un client (ou cocher « Tous les clients »).')
+      setMessage('Veuillez choisir un client (ou cocher une option « commun »).')
       return
     }
 
@@ -97,19 +100,23 @@ export default function AdminDocumentUpload() {
     try {
       const fd = new FormData()
       fd.append('file', file)
-      fd.append('all', allClients ? 'true' : 'false')
-      if (!allClients) fd.append('client', selectedClient)
+      fd.append('members', allMembers ? 'true' : 'false')
+      fd.append('future', allFuture ? 'true' : 'false')
+      if (!broadcast) fd.append('client', selectedClient)
 
       const res = await fetch('/api/admin/documents', { method: 'POST', body: fd })
       const data = await res.json().catch(() => null)
       if (!res.ok) throw new Error(data?.error || `Erreur serveur (HTTP ${res.status})`)
 
       setStatus('success')
-      setMessage(
-        allClients
-          ? 'Document commun ajouté — visible par tous les clients (présents et futurs).'
-          : `Document envoyé à ${selectedClient}.`
-      )
+      if (allFuture) {
+        setMessage('Document commun ajouté — visible par tous les clients, présents et futurs.')
+      } else if (allMembers) {
+        const count: number = data?.count ?? 0
+        setMessage(`Document envoyé à tous les clients actuels (${count}).`)
+      } else {
+        setMessage(`Document envoyé à ${selectedClient}.`)
+      }
     } catch (err) {
       setStatus('error')
       setMessage(err instanceof Error ? err.message : 'Erreur lors de l’envoi.')
@@ -220,10 +227,10 @@ export default function AdminDocumentUpload() {
               <select
                 value={selectedClient}
                 onChange={(e) => setSelectedClient(e.target.value)}
-                disabled={allClients || uploading || clientsLoading}
+                disabled={broadcast || uploading || clientsLoading}
                 style={{
                   ...styles.select,
-                  opacity: allClients || clientsLoading ? 0.5 : 1,
+                  opacity: broadcast || clientsLoading ? 0.5 : 1,
                 }}
               >
                 <option value="">
@@ -241,16 +248,39 @@ export default function AdminDocumentUpload() {
             <label style={styles.checkboxRow}>
               <input
                 type="checkbox"
-                checked={allClients}
+                checked={allMembers}
                 onChange={(e) => {
-                  setAllClients(e.target.checked)
-                  if (e.target.checked) setSelectedClient('')
+                  setAllMembers(e.target.checked)
+                  if (e.target.checked) {
+                    setAllFuture(false)
+                    setSelectedClient('')
+                  }
                 }}
                 disabled={uploading}
                 style={styles.checkbox}
               />
               <span>
                 Document commun à tous les clients{' '}
+                <span style={styles.countHint}>(membres actuels)</span>
+              </span>
+            </label>
+
+            <label style={styles.checkboxRow}>
+              <input
+                type="checkbox"
+                checked={allFuture}
+                onChange={(e) => {
+                  setAllFuture(e.target.checked)
+                  if (e.target.checked) {
+                    setAllMembers(false)
+                    setSelectedClient('')
+                  }
+                }}
+                disabled={uploading}
+                style={styles.checkbox}
+              />
+              <span>
+                Document commun même aux futurs clients{' '}
                 <span style={styles.countHint}>(présents et futurs)</span>
               </span>
             </label>

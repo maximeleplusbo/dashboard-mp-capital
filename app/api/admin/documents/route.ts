@@ -17,8 +17,10 @@ export async function POST(request: NextRequest) {
   const formData = await request.formData()
   const file = formData.get('file') as File | null
   const target = ((formData.get('client') as string | null) ?? '').trim()
-  // « all » = document commun à tous les clients, présents ET futurs.
-  const shared = formData.get('all') === 'true'
+  // future = commun à tous (présents ET futurs) ; members = copie chez tous les
+  // clients actuels uniquement. future a priorité s'il est coché.
+  const future = formData.get('future') === 'true'
+  const members = formData.get('members') === 'true'
 
   if (!file) {
     return NextResponse.json({ error: 'Aucun fichier' }, { status: 400 })
@@ -28,19 +30,48 @@ export async function POST(request: NextRequest) {
   const fileName = file.name
   const mimeType = file.type || 'application/octet-stream'
 
-  // Document commun : stocké une seule fois dans l'espace partagé, fusionné
-  // automatiquement dans « Mes documents » de chaque client (présent ou futur).
-  if (shared) {
+  // 1) Commun présents + futurs : stocké une seule fois dans l'espace partagé.
+  if (future) {
     try {
       await uploadCommonDocument(fileName, mimeType, buffer)
-      return NextResponse.json({ success: true, shared: true })
+      return NextResponse.json({ success: true, mode: 'future' })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Échec du dépôt du document commun'
       return NextResponse.json({ error: message }, { status: 502 })
     }
   }
 
-  // Sinon : dépôt pour un client précis (validé contre la liste réelle).
+  // 2) Tous les clients actuels : une copie dans le dossier de chaque client.
+  if (members) {
+    let clients: string[]
+    try {
+      clients = await listClientEmails()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erreur inconnue'
+      return NextResponse.json({ error: message }, { status: 502 })
+    }
+    if (clients.length === 0) {
+      return NextResponse.json({ error: 'Aucun client destinataire' }, { status: 400 })
+    }
+    const results = await Promise.allSettled(
+      clients.map((email) => uploadClientDocument(email, fileName, mimeType, buffer))
+    )
+    const count = results.filter((r) => r.status === 'fulfilled').length
+    const failed = clients.length - count
+    if (count === 0) {
+      const firstError = results.find((r) => r.status === 'rejected') as
+        | PromiseRejectedResult
+        | undefined
+      const reason =
+        firstError && firstError.reason instanceof Error
+          ? firstError.reason.message
+          : 'Échec du dépôt du document'
+      return NextResponse.json({ error: reason }, { status: 502 })
+    }
+    return NextResponse.json({ success: true, mode: 'members', count, failed, total: clients.length })
+  }
+
+  // 3) Un client précis (validé contre la liste réelle).
   if (!target) {
     return NextResponse.json({ error: 'Aucun client sélectionné' }, { status: 400 })
   }
@@ -50,7 +81,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Client inconnu' }, { status: 400 })
     }
     await uploadClientDocument(target, fileName, mimeType, buffer)
-    return NextResponse.json({ success: true, shared: false, count: 1 })
+    return NextResponse.json({ success: true, mode: 'client', count: 1 })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Échec du dépôt du document'
     return NextResponse.json({ error: message }, { status: 502 })
