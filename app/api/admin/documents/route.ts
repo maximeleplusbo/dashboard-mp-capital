@@ -35,9 +35,10 @@ export async function POST(request: NextRequest) {
   if (future) {
     try {
       await uploadCommonDocument(fileName, mimeType, buffer)
-      // Notifie les clients actuels (les futurs verront le doc à leur création).
+      // Notifie les clients actuels (hors admin) ; les futurs verront le doc
+      // dans leur espace à leur création.
       try {
-        const clients = await listClientEmails()
+        const clients = (await listClientEmails()).filter((c) => !isAdmin(c))
         await notifyNewDocument(clients)
       } catch {
         /* notification best-effort */
@@ -49,11 +50,11 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // 2) Tous les clients actuels : une copie dans le dossier de chaque client.
+  // 2) Tous les clients actuels (hors admin) : une copie dans chaque dossier.
   if (members) {
     let clients: string[]
     try {
-      clients = await listClientEmails()
+      clients = (await listClientEmails()).filter((c) => !isAdmin(c))
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur inconnue'
       return NextResponse.json({ error: message }, { status: 502 })

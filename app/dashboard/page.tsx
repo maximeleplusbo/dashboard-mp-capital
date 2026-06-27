@@ -1,22 +1,44 @@
 // app/dashboard/page.tsx
 import { auth0 } from '@/lib/auth0'
 import { redirect } from 'next/navigation'
-import { getClientData } from '@/lib/sheets'
+import { getClientData, listClientEmails } from '@/lib/sheets'
 import { isAdmin } from '@/lib/admin'
 import PatrimoineDashboard from '@/components/PatrimoineDashboard'
 import UploadForm from '@/app/admin/videos/UploadForm'
 import type { CSSProperties } from 'react'
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ client?: string }>
+}) {
   const session = await auth0.getSession()
   if (!session) redirect('/auth/login')
 
-  const data = await getClientData(session.user.email!)
   const admin = isAdmin(session.user.email)
+
+  // Admin « voir l'espace d'un client » : ?client=<email> (validé contre la liste).
+  let clients: string[] = []
+  let viewedClient: string | null = null
+  if (admin) {
+    try {
+      clients = await listClientEmails()
+    } catch {
+      clients = []
+    }
+    const requested = (await searchParams).client?.trim()
+    if (requested) {
+      viewedClient = clients.find((c) => c.toLowerCase() === requested.toLowerCase()) ?? null
+    }
+  }
+
+  const effectiveEmail = viewedClient || session.user.email!
+  const data = await getClientData(effectiveEmail)
+  const displayUser = viewedClient ? { name: viewedClient, email: viewedClient } : session.user
 
   return (
     <>
-      {admin && (
+      {admin && !viewedClient && (
         <section style={adminStyles.wrapper}>
           <div style={adminStyles.card}>
             <h2 style={adminStyles.title}>Espace administrateur — Déposer une vidéo</h2>
@@ -24,7 +46,13 @@ export default async function DashboardPage() {
           </div>
         </section>
       )}
-      <PatrimoineDashboard user={session.user} data={data as any} isAdmin={admin} />
+      <PatrimoineDashboard
+        user={displayUser}
+        data={data as any}
+        isAdmin={admin}
+        clients={clients}
+        viewedClient={viewedClient}
+      />
     </>
   )
 }

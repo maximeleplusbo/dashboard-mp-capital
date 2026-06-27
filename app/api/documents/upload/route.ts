@@ -1,6 +1,8 @@
 // app/api/documents/upload/route.ts
 import { auth0 } from '@/lib/auth0'
+import { isAdmin } from '@/lib/admin'
 import { uploadClientDocument } from '@/lib/documents'
+import { notifyAdminClientUpload } from '@/lib/email'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
@@ -12,14 +14,20 @@ export async function POST(request: NextRequest) {
   if (!file) return NextResponse.json({ error: 'Aucun fichier' }, { status: 400 })
 
   const buffer = Buffer.from(await file.arrayBuffer())
+  const clientEmail = session.user.email!
 
   try {
     await uploadClientDocument(
-      session.user.email!,
+      clientEmail,
       file.name,
       file.type || 'application/octet-stream',
       buffer
     )
+    // Alerte l'admin uniquement quand c'est un vrai client qui dépose
+    // (Maxime déposant chez lui ne s'auto-notifie pas). Best-effort.
+    if (!isAdmin(clientEmail)) {
+      await notifyAdminClientUpload(clientEmail, file.name)
+    }
     return NextResponse.json({ success: true })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Upload échoué'
