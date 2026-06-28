@@ -66,6 +66,17 @@ export default function VideosGallery() {
     return () => clearTimeout(t)
   }, [flash])
 
+  // Ouvre une vidéo + enregistre le visionnage (best-effort, le serveur ignore
+  // les visiteurs anonymes et l'admin).
+  function openVideo(video: StreamVideo) {
+    setSelected(video)
+    fetch('/api/videos/view', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid: video.uid }),
+    }).catch(() => {})
+  }
+
   async function handleDelete(video: StreamVideo) {
     setDeletingUid(video.uid)
     setFlash(null)
@@ -170,7 +181,7 @@ export default function VideosGallery() {
                   <VideoCard
                     key={v.uid}
                     video={v}
-                    onOpen={() => v.ready && setSelected(v)}
+                    onOpen={() => v.ready && openVideo(v)}
                     isAdmin={isAdminUser}
                     deleting={deletingUid === v.uid}
                     onDelete={() => handleDelete(v)}
@@ -317,6 +328,36 @@ function Player({
   const [saving, setSaving] = useState(false)
   const [editError, setEditError] = useState('')
 
+  // Suivi des visionnages (admin uniquement).
+  const [watched, setWatched] = useState<{ email: string; name: string; watchedAt: string }[]>([])
+  const [notWatched, setNotWatched] = useState<{ email: string; name: string }[]>([])
+  const [viewsLoading, setViewsLoading] = useState(false)
+  const [viewsError, setViewsError] = useState('')
+
+  useEffect(() => {
+    if (!isAdmin) return
+    let active = true
+    setViewsLoading(true)
+    setViewsError('')
+    fetch(`/api/admin/videos/${video.uid}/views`)
+      .then(async (res) => {
+        const data = await res.json().catch(() => null)
+        if (!res.ok) throw new Error(data?.error || `Erreur (HTTP ${res.status})`)
+        if (!active) return
+        setWatched(Array.isArray(data?.watched) ? data.watched : [])
+        setNotWatched(Array.isArray(data?.notWatched) ? data.notWatched : [])
+      })
+      .catch((err) => {
+        if (active) setViewsError(err instanceof Error ? err.message : 'Erreur de chargement')
+      })
+      .finally(() => {
+        if (active) setViewsLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [isAdmin, video.uid])
+
   function startEdit() {
     setTitleDraft(video.title)
     setSummaryDraft(video.summary)
@@ -424,6 +465,55 @@ function Player({
                 {video.summary ? video.summary : 'Pas de résumé disponible'}
               </p>
             </div>
+
+            {isAdmin && (
+              <div style={styles.viewsBox}>
+                <div style={styles.viewsHeader}>
+                  <span style={styles.viewsTitle}>Suivi des visionnages</span>
+                  {!viewsLoading && !viewsError && (
+                    <span style={styles.viewsCount}>
+                      {watched.length} vu · {notWatched.length} pas encore
+                    </span>
+                  )}
+                </div>
+
+                {viewsLoading && <p style={styles.viewsMuted}>Chargement…</p>}
+                {viewsError && <p style={{ ...styles.viewsMuted, color: '#f87171' }}>❌ {viewsError}</p>}
+
+                {!viewsLoading && !viewsError && (
+                  <>
+                    <p style={styles.viewsSub}>✅ A regardé ({watched.length})</p>
+                    {watched.length === 0 ? (
+                      <p style={styles.viewsMuted}>Personne pour le moment.</p>
+                    ) : (
+                      watched.map((w) => (
+                        <div key={w.email} style={styles.viewerRow}>
+                          <div style={styles.viewerMeta}>
+                            <span style={styles.viewerName}>{w.name || w.email}</span>
+                            <span style={styles.viewerEmail}>{w.email}</span>
+                          </div>
+                          <span style={styles.viewerDate}>{formatDateFr(w.watchedAt)}</span>
+                        </div>
+                      ))
+                    )}
+
+                    <p style={{ ...styles.viewsSub, marginTop: 16 }}>⚪ Pas encore regardé ({notWatched.length})</p>
+                    {notWatched.length === 0 ? (
+                      <p style={styles.viewsMuted}>Tous les clients ont regardé 🎉</p>
+                    ) : (
+                      notWatched.map((c) => (
+                        <div key={c.email} style={styles.viewerRow}>
+                          <div style={styles.viewerMeta}>
+                            <span style={{ ...styles.viewerName, color: 'rgba(232,234,240,0.55)' }}>{c.name || '—'}</span>
+                            <span style={styles.viewerEmail}>{c.email}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>
@@ -751,5 +841,69 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 500,
     color: 'rgba(232,234,240,0.7)',
     cursor: 'pointer',
+  },
+  viewsBox: {
+    marginTop: 16,
+    background: '#141720',
+    border: '0.5px solid rgba(200,169,110,0.2)',
+    borderRadius: 14,
+    padding: 18,
+  },
+  viewsHeader: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 12,
+  },
+  viewsTitle: {
+    fontSize: 15,
+    fontWeight: 600,
+    color: '#c8a96e',
+  },
+  viewsCount: {
+    fontSize: 12,
+    color: 'rgba(232,234,240,0.5)',
+  },
+  viewsSub: {
+    margin: '0 0 8px',
+    fontSize: 13,
+    fontWeight: 600,
+    color: 'rgba(232,234,240,0.8)',
+  },
+  viewsMuted: {
+    margin: '0 0 4px',
+    fontSize: 13,
+    color: 'rgba(232,234,240,0.4)',
+  },
+  viewerRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    padding: '8px 0',
+    borderTop: '0.5px solid rgba(255,255,255,0.05)',
+  },
+  viewerMeta: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 1,
+    minWidth: 0,
+  },
+  viewerName: {
+    fontSize: 14,
+    fontWeight: 500,
+    color: '#e8eaf0',
+  },
+  viewerEmail: {
+    fontSize: 12,
+    color: 'rgba(232,234,240,0.45)',
+    wordBreak: 'break-all',
+  },
+  viewerDate: {
+    flexShrink: 0,
+    fontSize: 12,
+    color: 'rgba(232,234,240,0.5)',
   },
 }
