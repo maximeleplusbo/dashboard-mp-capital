@@ -37,12 +37,19 @@ async function writeJson(path: string, value: unknown): Promise<void> {
  */
 export async function recordView(uid: string, email: string, name: string): Promise<void> {
   const key = emailKey(email)
-  const watchedAt = new Date().toISOString()
+  const now = new Date().toISOString()
   const displayName = (name || '').trim() || email
-  await Promise.all([
-    writeJson(`views/${uid}/${key}.json`, { email: key, name: displayName, watchedAt }),
-    writeJson(`members/${key}.json`, { email: key, name: displayName, lastSeen: watchedAt }),
-  ])
+
+  // On conserve la date du PREMIER visionnage : si un enregistrement existe déjà,
+  // on ne réécrit pas le fichier de vue (watchedAt reste la première fois).
+  const existing = await readJson<{ watchedAt?: string }>(`views/${uid}/${key}.json`)
+  const tasks: Promise<void>[] = [
+    writeJson(`members/${key}.json`, { email: key, name: displayName, lastSeen: now }),
+  ]
+  if (!existing?.watchedAt) {
+    tasks.push(writeJson(`views/${uid}/${key}.json`, { email: key, name: displayName, watchedAt: now }))
+  }
+  await Promise.all(tasks)
 }
 
 /** Liste les membres ayant regardé une vidéo (plus récents en premier). */

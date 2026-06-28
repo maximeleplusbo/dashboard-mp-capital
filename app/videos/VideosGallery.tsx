@@ -17,6 +17,21 @@ function formatDateFr(iso: string): string {
   }).format(d)
 }
 
+function formatDateTimeParis(iso: string): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'Europe/Paris',
+  }).format(d)
+}
+
 function formatDuree(totalSeconds: number): string {
   const s = Math.max(0, Math.round(totalSeconds))
   const h = Math.floor(s / 3600)
@@ -482,7 +497,7 @@ function Player({
 
                 {!viewsLoading && !viewsError && (
                   <>
-                    <p style={styles.viewsSub}>✅ A regardé ({watched.length})</p>
+                    <p style={styles.viewsSub}>✅ A regardé ({watched.length}) — 1er visionnage</p>
                     {watched.length === 0 ? (
                       <p style={styles.viewsMuted}>Personne pour le moment.</p>
                     ) : (
@@ -492,7 +507,7 @@ function Player({
                             <span style={styles.viewerName}>{w.name || w.email}</span>
                             <span style={styles.viewerEmail}>{w.email}</span>
                           </div>
-                          <span style={styles.viewerDate}>{formatDateFr(w.watchedAt)}</span>
+                          <span style={styles.viewerDate} title="Premier visionnage">{formatDateTimeParis(w.watchedAt)}</span>
                         </div>
                       ))
                     )}
