@@ -4,6 +4,7 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import AdminClientSwitcher from './AdminClientSwitcher'
+import LogoutButton from './LogoutButton'
 
 type DriveFile = {
   id: string
@@ -107,6 +108,7 @@ export default function DocumentsPage({
             {(user.name || '?').charAt(0).toUpperCase()}
           </div>
           <span>{user.name}</span>
+          <LogoutButton />
         </div>
       </header>
 
