@@ -3,6 +3,7 @@
 import { useEffect, useState, CSSProperties } from 'react'
 import Link from 'next/link'
 import { getPlaybackUrl, type StreamVideo } from '@/lib/cloudflare'
+import LogoutButton from '@/components/LogoutButton'
 
 type Status = 'loading' | 'ready' | 'error'
 
@@ -147,6 +148,7 @@ export default function VideosGallery() {
             </svg>
             Retour au tableau de bord
           </Link>
+          <LogoutButton />
         </div>
 
         {flash && (
@@ -559,6 +561,11 @@ const styles: Record<string, CSSProperties> = {
     boxSizing: 'border-box',
   },
   topbar: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 12,
     marginBottom: 24,
   },
   goldButton: {

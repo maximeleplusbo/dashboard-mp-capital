@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import { useState, useEffect } from 'react'
 import AdminDocumentUpload from './AdminDocumentUpload'
 import AdminClientSwitcher from './AdminClientSwitcher'
+import LogoutButton from './LogoutButton'
 
 const PatrimoineChart = dynamic(() => import('./PatrimoineChart'), { ssr: false })
 
@@ -159,6 +160,7 @@ export default function PatrimoineDashboard({ user, data, isAdmin = false, clien
             {(user.name || '?').charAt(0).toUpperCase()}
           </div>
           <span>{user.name}</span>
+          <LogoutButton />
         </div>
       </header>
 
